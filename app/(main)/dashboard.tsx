@@ -45,8 +45,10 @@ export default function DashboardScreen() {
     if (!user) router.replace("/(auth)/login" as any);
   }, [user?.uid]);
 
-  // Activity detail screens aren't built yet; wire these up once they exist.
-  const openActivity = (_activity: Activity) => {};
+  // Only the Parachute Drop screen is built out so far; the rest are pending.
+  const openActivity = (activity: Activity) => {
+    if (activity.id === "parachute") router.push("/parachute" as any);
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
