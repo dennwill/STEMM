@@ -45,9 +45,16 @@ export default function DashboardScreen() {
     if (!user) router.replace("/(auth)/login" as any);
   }, [user?.uid]);
 
-  // Only the Parachute Drop screen is built out so far; the rest are pending.
+  // Activities with a built screen route here; the rest stay inert until built.
+  const ROUTES: Record<string, string> = {
+    parachute: "/parachute",
+    sound: "/sound",
+    fan: "/fan",
+    earthquake: "/earthquake",
+  };
   const openActivity = (activity: Activity) => {
-    if (activity.id === "parachute") router.push("/parachute" as any);
+    const route = ROUTES[activity.id];
+    if (route) router.push(route as any);
   };
 
   return (

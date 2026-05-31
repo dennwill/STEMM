@@ -35,6 +35,9 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="edit-team" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="parachute" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="sound" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="fan" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="earthquake" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="settings" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="terms" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="privacy" options={{ animation: 'slide_from_right' }} />
