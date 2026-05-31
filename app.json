@@ -40,7 +40,20 @@
         }
       ],
       "expo-sqlite",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow STEMM to access the microphone to measure sound levels."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow STEMM to access your photos to attach experiment videos.",
+          "cameraPermission": "Allow STEMM to use the camera to record experiment videos."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
