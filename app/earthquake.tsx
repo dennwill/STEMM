@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { Accelerometer } from "expo-sensors";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Accelerometer, Gyroscope } from "expo-sensors";
 import { Dispatch, SetStateAction, useCallback, useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -40,6 +40,7 @@ const TRIALS = [
 
 export default function EarthquakeScreen() {
   const router = useRouter();
+  const { activityTitle } = useLocalSearchParams<{ activityTitle?: string }>();
   const [step, setStep] = useState(0);
 
   // Activity state lives here (not inside each step) so navigating between
@@ -230,34 +231,40 @@ function Prediction({
 function Recorder() {
   const [vibrating, setVibrating] = useState(false);
   const [accelData, setAccelData] = useState({ x: 0, y: 0, z: 0 });
+  const [gyroData, setGyroData] = useState({ x: 0, y: 0, z: 0 });
   const subscription = useRef<ReturnType<typeof Accelerometer.addListener> | null>(null);
+  const gyroSub = useRef<ReturnType<typeof Gyroscope.addListener> | null>(null);
 
-  const stopAccelerometer = useCallback(() => {
+  const stopSensors = useCallback(() => {
     subscription.current?.remove();
     subscription.current = null;
+    gyroSub.current?.remove();
+    gyroSub.current = null;
   }, []);
 
-  const startAccelerometer = useCallback(() => {
+  const startSensors = useCallback(() => {
     Accelerometer.setUpdateInterval(100);
     subscription.current = Accelerometer.addListener(setAccelData);
+    Gyroscope.setUpdateInterval(100);
+    gyroSub.current = Gyroscope.addListener(setGyroData);
   }, []);
 
   useEffect(() => {
     return () => {
       Vibration.cancel();
-      stopAccelerometer();
+      stopSensors();
     };
-  }, [stopAccelerometer]);
+  }, [stopSensors]);
 
   function toggle() {
     if (vibrating) {
       Vibration.cancel();
-      stopAccelerometer();
+      stopSensors();
       setVibrating(false);
       return;
     }
     Vibration.vibrate([0, 600, 400], true);
-    startAccelerometer();
+    startSensors();
     setVibrating(true);
   }
 
@@ -301,6 +308,37 @@ function Recorder() {
         <View style={styles.magnitudeRow}>
           <Text style={styles.magnitudeLabel}>Magnitude</Text>
           <Text style={styles.magnitudeValue}>{magnitude.toFixed(3)}</Text>
+        </View>
+
+        {!vibrating && (
+          <Text style={styles.accelHint}>
+            Press Vibrate to start reading sensor data.
+          </Text>
+        )}
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.accelHeader}>
+          <MaterialCommunityIcons name="rotate-3d-variant" size={24} color={COLORS.primary} />
+          <Text style={styles.accelTitle}>Gyroscope</Text>
+        </View>
+
+        <View style={styles.accelGrid}>
+          {(["X", "Y", "Z"] as const).map((axis) => (
+            <View key={axis} style={styles.accelCell}>
+              <Text style={styles.accelAxisLabel}>{axis}</Text>
+              <Text style={styles.accelValue}>
+                {gyroData[axis.toLowerCase() as "x" | "y" | "z"].toFixed(3)}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.magnitudeRow}>
+          <Text style={styles.magnitudeLabel}>Rotation rate</Text>
+          <Text style={styles.magnitudeValue}>
+            {Math.sqrt(gyroData.x ** 2 + gyroData.y ** 2 + gyroData.z ** 2).toFixed(3)}
+          </Text>
         </View>
 
         {!vibrating && (

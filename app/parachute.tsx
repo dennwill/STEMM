@@ -1,5 +1,6 @@
 import { FontAwesome5 } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useSQLiteContext } from "expo-sqlite";
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -15,6 +16,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { COLORS } from "@/components/auth-shell";
+import {
+  createChallengeSession,
+  createDataPoint,
+} from "@/lib/crud";
 
 // Lavender accents that match the activity mockups. Kept local since they're
 // specific to this screen and not part of the shared auth palette.
@@ -66,6 +71,8 @@ type TrialId = (typeof TRIALS)[number]["id"];
 
 export default function ParachuteScreen() {
   const router = useRouter();
+  const db = useSQLiteContext();
+  const { activityTitle } = useLocalSearchParams<{ activityTitle?: string }>();
   const [step, setStep] = useState(0);
 
   // Activity state lives here (not inside each step) so navigating between
@@ -81,8 +88,37 @@ export default function ParachuteScreen() {
   const isFirst = step === 0;
   const isLast = step === TABS.length - 1;
 
-  const goNext = () => {
+  const goNext = async () => {
     if (isLast) {
+      // Persist the activity session and data points to SQLite
+      try {
+        const sessionId = await createChallengeSession(db, {
+          team_id: 1, // default local team
+          activity_id: 1, // Parachute Drop Challenge
+          prediction_text: prediction.choice
+            ? `${prediction.choice}: ${prediction.reason}`
+            : null,
+          discussion_reflection: reflection || null,
+        });
+
+        // Save each trial as a data point
+        for (const trial of TRIALS) {
+          const trialTime = times[trial.id];
+          await createDataPoint(db, {
+            session_id: sessionId,
+            attempt_number: TRIALS.indexOf(trial) + 1,
+            action_or_design: trial.title,
+            prediction_value: prediction.choice === trial.short ? "predicted fastest" : null,
+            outcome_value: trialTime > 0 ? formatTime(trialTime) : null,
+            prediction_correct: prediction.choice === trial.short && trialTime > 0 ? true : null,
+            media_file_path: null,
+          });
+        }
+
+        Alert.alert("Saved!", "Your activity data has been saved locally.");
+      } catch (err) {
+        console.warn("Failed to save activity data:", err);
+      }
       router.back();
       return;
     }

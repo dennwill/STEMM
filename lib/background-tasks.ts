@@ -1,11 +1,20 @@
 import * as TaskManager from "expo-task-manager";
 import * as BackgroundFetch from "expo-background-fetch";
+import { collection, getDocs } from "firebase/firestore";
+import { firestore } from "./firebase";
 
 const LEADERBOARD_SYNC_TASK = "leaderboard-sync-task";
 
 TaskManager.defineTask(LEADERBOARD_SYNC_TASK, async () => {
-  console.log("Background leaderboard sync executed");
-  return BackgroundFetch.BackgroundFetchResult.NewData;
+  try {
+    // Fetch the latest leaderboard data from Firestore in the background
+    const snapshot = await getDocs(collection(firestore, "teams"));
+    console.log(`Background sync: fetched ${snapshot.size} teams from Firestore`);
+    return BackgroundFetch.BackgroundFetchResult.NewData;
+  } catch (error) {
+    console.error("Background sync failed:", error);
+    return BackgroundFetch.BackgroundFetchResult.Failed;
+  }
 });
 
 export async function registerBackgroundSync(): Promise<void> {

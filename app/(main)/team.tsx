@@ -78,7 +78,17 @@ export default function TeamScreen() {
         return;
       }
 
-      const teamSnap = await getDoc(doc(firestore, "teams", tid));
+      // Parallel fetch: team doc and members query are independent reads
+      const [teamSnap, membersSnap] = await Promise.all([
+        getDoc(doc(firestore, "teams", tid)),
+        getDocs(
+          query(
+            collection(firestore, "users"),
+            where("team_id", "==", tid),
+          ),
+        ),
+      ]);
+
       if (!teamSnap.exists()) {
         setError("Your team no longer exists.");
         setTeam(null);
@@ -87,11 +97,6 @@ export default function TeamScreen() {
       }
       setTeam(teamSnap.data() as Team);
 
-      const membersQuery = query(
-        collection(firestore, "users"),
-        where("team_id", "==", tid),
-      );
-      const membersSnap = await getDocs(membersQuery);
       const list: Member[] = membersSnap.docs.map((d) => {
         const data = d.data() as { first_name: string; last_name: string };
         return {

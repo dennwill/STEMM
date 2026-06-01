@@ -6,7 +6,7 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from "expo-audio";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -72,6 +72,7 @@ type TrialId = (typeof TRIALS)[number]["id"];
 
 export default function SoundScreen() {
   const router = useRouter();
+  const { activityTitle } = useLocalSearchParams<{ activityTitle?: string }>();
   const [step, setStep] = useState(0);
 
   // Activity state lives here (not inside each step) so navigating between

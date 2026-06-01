@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Dispatch, SetStateAction, useState } from "react";
 import {
   Alert,
@@ -66,6 +66,7 @@ type TrialId = (typeof TRIALS)[number]["id"];
 
 export default function FanScreen() {
   const router = useRouter();
+  const { activityTitle } = useLocalSearchParams<{ activityTitle?: string }>();
   const [step, setStep] = useState(0);
 
   // Activity state lives here (not inside each step) so navigating between

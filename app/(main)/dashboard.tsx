@@ -6,7 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import AdBanner from "@/components/ad-banner";
 import { COLORS } from "@/components/auth-shell";
-import { auth } from "@/lib/firebase";
+import { auth, trackEvent } from "@/lib/firebase";
 import { registerForPushNotifications, scheduleActivityReminder } from "@/lib/notifications";
 
 type ActivityIcon =
@@ -69,7 +69,8 @@ export default function DashboardScreen() {
   const openActivity = (activity: Activity) => {
     const route = ROUTES[activity.id];
     if (route) {
-      router.push(route as any);
+      router.push({ pathname: route as any, params: { activityTitle: activity.title } });
+      trackEvent("activity_opened", { activity_id: activity.id, activity_title: activity.title });
       // Schedule a reminder when user starts an activity
       scheduleActivityReminder(activity.title, 5).catch((err) => {
         console.warn("Could not schedule activity reminder:", err);

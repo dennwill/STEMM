@@ -9,6 +9,7 @@ import { COLORS } from '@/components/auth-shell';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { registerBackgroundSync } from '@/lib/background-tasks';
 import { DATABASE_NAME, migrateDbIfNeeded } from '@/lib/db';
+import { registerForPushNotifications } from '@/lib/notifications';
 
 export const unstable_settings = {
   anchor: '(auth)',
@@ -18,9 +19,11 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   useEffect(() => {
-    registerBackgroundSync().catch((err) => {
-      console.error('Failed to register background sync:', err);
-    });
+    // Parallel initialization: register background sync and notification permissions concurrently
+    Promise.all([
+      registerBackgroundSync(),
+      registerForPushNotifications(),
+    ]).catch((err) => console.warn('Parallel init error:', err));
   }, []);
 
   // Match the navigator background to the app background so screen swaps

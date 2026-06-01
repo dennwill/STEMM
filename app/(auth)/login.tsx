@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { AuthShell, COLORS, FormHeading, PrimaryButton, fieldStyles } from "@/components/auth-shell";
 import { friendlyError } from "@/lib/errors";
-import { auth } from "@/lib/firebase";
+import { auth, trackEvent } from "@/lib/firebase";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -23,6 +23,7 @@ export default function LoginScreen() {
     setSubmitting(true);
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password);
+      trackEvent("login", { method: "email" });
       router.replace("/dashboard" as any);
     } catch (e: any) {
       setError(friendlyError(e, "Login failed. Please try again."));

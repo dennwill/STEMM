@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { COLORS } from "@/components/auth-shell";
+import { cancelAllNotifications, registerForPushNotifications } from "@/lib/notifications";
 
 type BatteryIconName =
   | "battery"
@@ -91,6 +92,15 @@ export default function SettingsScreen() {
     };
   }, []);
 
+  const handleNotificationToggle = async (value: boolean) => {
+    setNotificationsEnabled(value);
+    if (!value) {
+      await cancelAllNotifications();
+    } else {
+      await registerForPushNotifications();
+    }
+  };
+
   const pct = batteryLevel < 0 ? "—" : `${Math.round(batteryLevel * 100)}%`;
   const iconName = getBatteryIcon(batteryLevel, batteryState);
   const iconColor = getBatteryColor(batteryLevel);
@@ -136,7 +146,7 @@ export default function SettingsScreen() {
             </View>
             <Switch
               value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
+              onValueChange={handleNotificationToggle}
               trackColor={{ false: COLORS.input, true: COLORS.primary }}
               thumbColor={COLORS.white}
             />
