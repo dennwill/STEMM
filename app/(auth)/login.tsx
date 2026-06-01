@@ -71,7 +71,7 @@ export default function LoginScreen() {
 
         <Pressable onPress={() => router.replace("/(auth)/register" as any)}>
           <Text style={styles.altLink}>
-            Don't have an account? <Text style={styles.altLinkAccent}>Sign up</Text>
+            Don&apos;t have an account? <Text style={styles.altLinkAccent}>Sign up</Text>
           </Text>
         </Pressable>
       </View>

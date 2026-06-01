@@ -16,7 +16,7 @@ export default function JoinTeamScreen() {
 
   useEffect(() => {
     if (!auth.currentUser) router.replace("/(auth)/login" as any);
-  }, []);
+  }, [router]);
 
   async function joinTeam() {
     const user = auth.currentUser;

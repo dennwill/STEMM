@@ -4,8 +4,10 @@ import { useEffect } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import AdBanner from "@/components/ad-banner";
 import { COLORS } from "@/components/auth-shell";
 import { auth } from "@/lib/firebase";
+import { registerForPushNotifications, scheduleActivityReminder } from "@/lib/notifications";
 
 type ActivityIcon =
   | { lib: "mc"; name: keyof typeof MaterialCommunityIcons.glyphMap }
@@ -42,8 +44,16 @@ export default function DashboardScreen() {
   const user = auth.currentUser;
 
   useEffect(() => {
-    if (!user) router.replace("/(auth)/login" as any);
-  }, [user?.uid]);
+    if (!user) {
+      router.replace("/(auth)/login" as any);
+      return;
+    }
+
+    // Register push notification token on mount
+    registerForPushNotifications().catch((err) => {
+      console.warn("Could not register push notifications:", err);
+    });
+  }, [router, user]);
 
   // Activities with a built screen route here; the rest stay inert until built.
   const ROUTES: Record<string, string> = {
@@ -51,10 +61,20 @@ export default function DashboardScreen() {
     sound: "/sound",
     fan: "/fan",
     earthquake: "/earthquake",
+    performance: "/performance",
+    reaction: "/reaction",
+    breathing: "/breathing",
   };
+
   const openActivity = (activity: Activity) => {
     const route = ROUTES[activity.id];
-    if (route) router.push(route as any);
+    if (route) {
+      router.push(route as any);
+      // Schedule a reminder when user starts an activity
+      scheduleActivityReminder(activity.title, 5).catch((err) => {
+        console.warn("Could not schedule activity reminder:", err);
+      });
+    }
   };
 
   return (
@@ -95,6 +115,18 @@ export default function DashboardScreen() {
             </Pressable>
           ))}
         </View>
+
+        <Text style={styles.sectionTitle}>Tools</Text>
+        <View style={styles.grid}>
+          <Pressable style={styles.gridCard} onPress={() => router.push("/map" as any)}>
+            <View style={styles.gridIcon}>
+              <Ionicons name="map-outline" size={40} color={COLORS.primary} />
+            </View>
+            <Text style={styles.gridLabel}>Activity Map</Text>
+          </Pressable>
+        </View>
+
+        <AdBanner style={styles.adBanner} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -170,4 +202,5 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   listLabel: { color: COLORS.inputText, fontSize: 15, fontWeight: "600", flex: 1, paddingRight: 12 },
+  adBanner: { marginTop: 24, marginBottom: 12 },
 });

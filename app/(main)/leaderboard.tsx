@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -118,26 +118,22 @@ export default function LeaderboardScreen() {
   const [grade, setGrade] = useState<string | null>(null);
   const [showGradeList, setShowGradeList] = useState(false);
 
-  useEffect(() => {
-    if (!user) {
-      router.replace("/(auth)/login" as any);
-      return;
-    }
-    loadTeams();
-  }, [user?.uid]);
-
-  async function loadTeams() {
+  const loadTeams = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      if (user) {
-        const userSnap = await getDoc(doc(firestore, "users", user.uid));
+      // Parallel fetch: user profile and all teams loaded simultaneously
+      const [userSnap, teamsSnap] = await Promise.all([
+        user ? getDoc(doc(firestore, "users", user.uid)) : Promise.resolve(null),
+        getDocs(collection(firestore, "teams")),
+      ]);
+
+      if (userSnap) {
         const userData = userSnap.data() as { team_id?: string } | undefined;
         setMyTeamId(userData?.team_id ?? null);
       }
 
-      const snap = await getDocs(collection(firestore, "teams"));
-      const list: Team[] = snap.docs.map((d) => {
+      const list: Team[] = teamsSnap.docs.map((d) => {
         const data = d.data() as { team_name?: string; grade_level?: string; score?: number };
         return {
           id: d.id,
@@ -152,7 +148,15 @@ export default function LeaderboardScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      router.replace("/(auth)/login" as any);
+      return;
+    }
+    loadTeams();
+  }, [loadTeams, router, user]);
 
   const ranked = teams
     .filter((t) => !grade || t.grade_level === grade)
