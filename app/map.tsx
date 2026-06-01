@@ -10,7 +10,7 @@ import {
   Text,
   View,
 } from "react-native";
-import type * as ReactNativeMaps from "react-native-maps";
+import MapView, { Marker } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { COLORS } from "@/components/auth-shell";
@@ -20,11 +20,6 @@ type LocationData = {
   longitude: number;
   accuracy: number | null;
 };
-
-const NativeMaps =
-  Platform.OS === "web"
-    ? null
-    : (eval("require")("react-native-maps") as typeof ReactNativeMaps);
 
 export default function MapScreen() {
   const router = useRouter();
@@ -89,9 +84,9 @@ export default function MapScreen() {
             the Activity Map.
           </Text>
         </View>
-      ) : location && NativeMaps ? (
+      ) : location && Platform.OS !== "web" ? (
         <View style={styles.mapContainer}>
-          <NativeMaps.default
+          <MapView
             style={styles.map}
             initialRegion={{
               latitude: location.latitude,
@@ -101,14 +96,14 @@ export default function MapScreen() {
             }}
             showsUserLocation
           >
-            <NativeMaps.Marker
+            <Marker
               coordinate={{
                 latitude: location.latitude,
                 longitude: location.longitude,
               }}
               title="You are here"
             />
-          </NativeMaps.default>
+          </MapView>
 
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Current Location</Text>
