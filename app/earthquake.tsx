@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Accelerometer, Gyroscope } from "expo-sensors";
+import { Dispatch, SetStateAction, useCallback, useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -39,6 +40,7 @@ const TRIALS = [
 
 export default function EarthquakeScreen() {
   const router = useRouter();
+  const { activityTitle } = useLocalSearchParams<{ activityTitle?: string }>();
   const [step, setStep] = useState(0);
 
   // Activity state lives here (not inside each step) so navigating between
@@ -228,38 +230,123 @@ function Prediction({
 
 function Recorder() {
   const [vibrating, setVibrating] = useState(false);
+  const [accelData, setAccelData] = useState({ x: 0, y: 0, z: 0 });
+  const [gyroData, setGyroData] = useState({ x: 0, y: 0, z: 0 });
+  const subscription = useRef<ReturnType<typeof Accelerometer.addListener> | null>(null);
+  const gyroSub = useRef<ReturnType<typeof Gyroscope.addListener> | null>(null);
 
-  // Always stop the buzz when the user leaves the step.
+  const stopSensors = useCallback(() => {
+    subscription.current?.remove();
+    subscription.current = null;
+    gyroSub.current?.remove();
+    gyroSub.current = null;
+  }, []);
+
+  const startSensors = useCallback(() => {
+    Accelerometer.setUpdateInterval(100);
+    subscription.current = Accelerometer.addListener(setAccelData);
+    Gyroscope.setUpdateInterval(100);
+    gyroSub.current = Gyroscope.addListener(setGyroData);
+  }, []);
+
   useEffect(() => {
     return () => {
       Vibration.cancel();
+      stopSensors();
     };
-  }, []);
+  }, [stopSensors]);
 
   function toggle() {
     if (vibrating) {
       Vibration.cancel();
+      stopSensors();
       setVibrating(false);
       return;
     }
-    // Pattern repeats until cancelled (iOS ignores the durations but still loops).
     Vibration.vibrate([0, 600, 400], true);
+    startSensors();
     setVibrating(true);
   }
 
+  const magnitude = Math.sqrt(
+    accelData.x ** 2 + accelData.y ** 2 + accelData.z ** 2,
+  );
+
   return (
-    <View style={[styles.card, styles.mediaCard]}>
-      <MaterialCommunityIcons
-        name="vibrate"
-        size={48}
-        color={COLORS.primary}
-        style={styles.mediaIcon}
-      />
-      <Pressable style={[styles.primaryBtn, vibrating && styles.outlineBtn]} onPress={toggle}>
-        <Text style={[styles.primaryBtnText, vibrating && styles.outlineBtnText]}>
-          {vibrating ? "Stop Vibrating" : "Vibrate!"}
-        </Text>
-      </Pressable>
+    <View style={styles.stack}>
+      <View style={[styles.card, styles.mediaCard]}>
+        <MaterialCommunityIcons
+          name="vibrate"
+          size={48}
+          color={COLORS.primary}
+          style={styles.mediaIcon}
+        />
+        <Pressable style={[styles.primaryBtn, vibrating && styles.outlineBtn]} onPress={toggle}>
+          <Text style={[styles.primaryBtnText, vibrating && styles.outlineBtnText]}>
+            {vibrating ? "Stop Vibrating" : "Vibrate!"}
+          </Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.accelHeader}>
+          <MaterialCommunityIcons name="axis-arrow" size={24} color={COLORS.primary} />
+          <Text style={styles.accelTitle}>Accelerometer</Text>
+        </View>
+
+        <View style={styles.accelGrid}>
+          {(["X", "Y", "Z"] as const).map((axis) => (
+            <View key={axis} style={styles.accelCell}>
+              <Text style={styles.accelAxisLabel}>{axis}</Text>
+              <Text style={styles.accelValue}>
+                {accelData[axis.toLowerCase() as "x" | "y" | "z"].toFixed(3)}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.magnitudeRow}>
+          <Text style={styles.magnitudeLabel}>Magnitude</Text>
+          <Text style={styles.magnitudeValue}>{magnitude.toFixed(3)}</Text>
+        </View>
+
+        {!vibrating && (
+          <Text style={styles.accelHint}>
+            Press Vibrate to start reading sensor data.
+          </Text>
+        )}
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.accelHeader}>
+          <MaterialCommunityIcons name="rotate-3d-variant" size={24} color={COLORS.primary} />
+          <Text style={styles.accelTitle}>Gyroscope</Text>
+        </View>
+
+        <View style={styles.accelGrid}>
+          {(["X", "Y", "Z"] as const).map((axis) => (
+            <View key={axis} style={styles.accelCell}>
+              <Text style={styles.accelAxisLabel}>{axis}</Text>
+              <Text style={styles.accelValue}>
+                {gyroData[axis.toLowerCase() as "x" | "y" | "z"].toFixed(3)}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.magnitudeRow}>
+          <Text style={styles.magnitudeLabel}>Rotation rate</Text>
+          <Text style={styles.magnitudeValue}>
+            {Math.sqrt(gyroData.x ** 2 + gyroData.y ** 2 + gyroData.z ** 2).toFixed(3)}
+          </Text>
+        </View>
+
+        {!vibrating && (
+          <Text style={styles.accelHint}>
+            Press Vibrate to start reading sensor data.
+          </Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -445,8 +532,34 @@ const styles = StyleSheet.create({
   },
 
   // Recorder (vibration card)
-  mediaCard: { marginTop: 20, alignItems: "center", paddingVertical: 40 },
+  mediaCard: { alignItems: "center", paddingVertical: 40 },
   mediaIcon: { marginBottom: 22 },
+
+  // Accelerometer
+  accelHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 },
+  accelTitle: { color: COLORS.primary, fontSize: 18, fontWeight: "800" },
+  accelGrid: { flexDirection: "row", gap: 12 },
+  accelCell: {
+    flex: 1,
+    backgroundColor: COLORS.bg,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  accelAxisLabel: { color: COLORS.muted, fontSize: 13, fontWeight: "600", marginBottom: 4 },
+  accelValue: { color: COLORS.inputText, fontSize: 17, fontWeight: "700", fontVariant: ["tabular-nums"] },
+  magnitudeRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#E2E2EC",
+  },
+  magnitudeLabel: { color: COLORS.inputText, fontSize: 16, fontWeight: "700" },
+  magnitudeValue: { color: COLORS.primary, fontSize: 20, fontWeight: "800", fontVariant: ["tabular-nums"] },
+  accelHint: { color: COLORS.muted, fontSize: 14, textAlign: "center", marginTop: 14 },
   primaryBtn: {
     backgroundColor: COLORS.primary,
     borderRadius: 12,

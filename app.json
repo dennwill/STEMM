@@ -53,6 +53,27 @@
           "photosPermission": "Allow STEMM to access your photos to attach experiment videos.",
           "cameraPermission": "Allow STEMM to use the camera to record experiment videos."
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow STEMM to access your GPS coordinates to display your activity location on the interactive map."
+        }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Allow STEMM to record accelerometer data to measure structural integrity under simulated seismic forces."
+        }
+      ],
+      "expo-notifications",
+      "expo-task-manager",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+        }
       ]
     ],
     "experiments": {

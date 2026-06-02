@@ -2,11 +2,14 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { Stack } from 'expo-router';
 import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { COLORS } from '@/components/auth-shell';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { registerBackgroundSync } from '@/lib/background-tasks';
 import { DATABASE_NAME, migrateDbIfNeeded } from '@/lib/db';
+import { registerForPushNotifications } from '@/lib/notifications';
 
 export const unstable_settings = {
   anchor: '(auth)',
@@ -14,6 +17,14 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+
+  useEffect(() => {
+    // Parallel initialization: register background sync and notification permissions concurrently
+    Promise.all([
+      registerBackgroundSync(),
+      registerForPushNotifications(),
+    ]).catch((err) => console.warn('Parallel init error:', err));
+  }, []);
 
   // Match the navigator background to the app background so screen swaps
   // never flash the navigator's default white card.
@@ -38,6 +49,10 @@ export default function RootLayout() {
           <Stack.Screen name="sound" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="fan" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="earthquake" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="performance" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="reaction" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="breathing" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="map" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="settings" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="terms" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="privacy" options={{ animation: 'slide_from_right' }} />

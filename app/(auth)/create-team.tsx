@@ -40,7 +40,7 @@ export default function CreateTeamScreen() {
 
   useEffect(() => {
     if (!auth.currentUser) router.replace("/(auth)/login" as any);
-  }, []);
+  }, [router]);
 
   function next() {
     setError(null);
