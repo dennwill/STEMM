@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -112,14 +113,18 @@ export default function LeaderboardScreen() {
   const user = auth.currentUser;
 
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [myTeamId, setMyTeamId] = useState<string | null>(null);
   const [grade, setGrade] = useState<string | null>(null);
   const [showGradeList, setShowGradeList] = useState(false);
 
-  const loadTeams = useCallback(async () => {
-    setLoading(true);
+  const loadTeams = useCallback(async (opts?: { silent?: boolean }) => {
+    // A manual refresh keeps the current list on screen and shows the lightweight
+    // spinner; only the initial load uses the full-page ActivityIndicator.
+    if (opts?.silent) setRefreshing(true);
+    else setLoading(true);
     setError(null);
     try {
       // Parallel fetch: user profile and all teams loaded simultaneously
@@ -147,8 +152,11 @@ export default function LeaderboardScreen() {
       setError(friendlyError(e, "Failed to load the leaderboard. Please try again."));
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [user]);
+
+  const handleRefresh = useCallback(() => loadTeams({ silent: true }), [loadTeams]);
 
   useEffect(() => {
     if (!user) {
@@ -169,9 +177,28 @@ export default function LeaderboardScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
         <Text style={styles.logo}>STEMM</Text>
+        <Pressable
+          onPress={handleRefresh}
+          disabled={refreshing}
+          hitSlop={12}
+          style={[styles.refreshBtn, refreshing && styles.refreshBtnDisabled]}
+        >
+          <MaterialCommunityIcons name="refresh" size={26} color={COLORS.white} />
+        </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={COLORS.primary}
+            colors={[COLORS.primary]}
+          />
+        }
+      >
         <Text style={styles.pageTitle}>Leaderboard</Text>
 
         <Pressable onPress={() => setShowGradeList((v) => !v)} style={styles.dropdownTrigger}>
@@ -275,8 +302,13 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   logo: { color: COLORS.white, fontSize: 34, fontWeight: "900", letterSpacing: -1 },
+  refreshBtn: { padding: 4 },
+  refreshBtnDisabled: { opacity: 0.5 },
   scrollContent: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 24 },
   pageTitle: {
     color: COLORS.primary,
