@@ -3,13 +3,14 @@ import { ReactNode } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+import { PressableScale } from "@/components/pressable-scale";
 
 export const COLORS = {
   bg: "#EEF0F8",
@@ -44,9 +45,9 @@ export function AuthShell({ children, showLoginLink = true, onBack }: Props) {
         >
           <View style={styles.header}>
             {onBack ? (
-              <Pressable onPress={onBack} hitSlop={12} style={styles.backBtn}>
+              <PressableScale onPress={onBack} hitSlop={12} style={styles.backBtn}>
                 <Text style={styles.backArrow}>←</Text>
-              </Pressable>
+              </PressableScale>
             ) : (
               <View style={styles.backBtn} />
             )}
@@ -85,13 +86,13 @@ export function PrimaryButton({
   disabled?: boolean;
 }) {
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       disabled={disabled}
       style={[styles.primaryBtn, disabled && styles.btnDisabled]}
     >
       <Text style={styles.primaryBtnText}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 

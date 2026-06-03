@@ -1,10 +1,56 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect } from "react";
+import { StyleSheet, Text, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 
 import { COLORS } from "@/components/auth-shell";
+import { PressableScale } from "@/components/pressable-scale";
+import { SPRINGS } from "@/constants/motion";
 
 export type NavTab = "leaderboard" | "dashboard" | "team";
+
+/** A side tab whose icon springs up slightly when it becomes active. */
+function NavItem({
+  active,
+  onPress,
+  activeIcon,
+  inactiveIcon,
+  label,
+}: {
+  active: boolean;
+  onPress: () => void;
+  activeIcon: keyof typeof Ionicons.glyphMap;
+  inactiveIcon: keyof typeof Ionicons.glyphMap;
+  label: string;
+}) {
+  const scale = useSharedValue(active ? 1.15 : 1);
+
+  useEffect(() => {
+    scale.value = withSpring(active ? 1.15 : 1, SPRINGS.bouncy);
+  }, [active, scale]);
+
+  const iconStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <PressableScale style={styles.sideItem} onPress={onPress} hitSlop={8} haptic={!active}>
+      <Animated.View style={iconStyle}>
+        <Ionicons
+          name={active ? activeIcon : inactiveIcon}
+          size={26}
+          color={active ? COLORS.primary : COLORS.muted}
+        />
+      </Animated.View>
+      <Text style={[styles.sideLabel, active && styles.activeLabel]}>{label}</Text>
+    </PressableScale>
+  );
+}
 
 export function BottomNav({ state, navigation, insets }: BottomTabBarProps) {
   const active = state.routes[state.index]?.name as NavTab;
@@ -13,45 +59,53 @@ export function BottomNav({ state, navigation, insets }: BottomTabBarProps) {
     if (tab !== active) navigation.navigate(tab);
   };
 
+  const dashActive = active === "dashboard";
+  const circleScale = useSharedValue(dashActive ? 1 : 1);
+
+  useEffect(() => {
+    // A little pop when Dashboard becomes the active tab.
+    circleScale.value = withSpring(dashActive ? 1.08 : 1, SPRINGS.bouncy);
+  }, [dashActive, circleScale]);
+
+  const circleStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: circleScale.value }],
+  }));
+
   return (
     <View style={[styles.wrap, { paddingBottom: insets.bottom }]}>
       <View style={styles.bar}>
-        <Pressable style={styles.sideItem} onPress={() => go("leaderboard")} hitSlop={8}>
-          <Ionicons
-            name={active === "leaderboard" ? "trophy" : "trophy-outline"}
-            size={26}
-            color={active === "leaderboard" ? COLORS.primary : COLORS.muted}
-          />
-          <Text style={[styles.sideLabel, active === "leaderboard" && styles.activeLabel]}>
-            Leaderboard
-          </Text>
-        </Pressable>
+        <NavItem
+          active={active === "leaderboard"}
+          onPress={() => go("leaderboard")}
+          activeIcon="trophy"
+          inactiveIcon="trophy-outline"
+          label="Leaderboard"
+        />
 
         <View style={styles.centerSlot} />
 
-        <Pressable style={styles.sideItem} onPress={() => go("team")} hitSlop={8}>
-          <Ionicons
-            name={active === "team" ? "people" : "people-outline"}
-            size={26}
-            color={active === "team" ? COLORS.primary : COLORS.muted}
-          />
-          <Text style={[styles.sideLabel, active === "team" && styles.activeLabel]}>Team</Text>
-        </Pressable>
+        <NavItem
+          active={active === "team"}
+          onPress={() => go("team")}
+          activeIcon="people"
+          inactiveIcon="people-outline"
+          label="Team"
+        />
       </View>
 
       <View style={styles.centerButton} pointerEvents="box-none">
-        <Pressable onPress={() => go("dashboard")} hitSlop={8} style={styles.centerPressable}>
-          <View style={[styles.centerCircle, active === "dashboard" && styles.centerCircleActive]}>
+        <PressableScale onPress={() => go("dashboard")} hitSlop={8} style={styles.centerPressable}>
+          <Animated.View
+            style={[styles.centerCircle, dashActive && styles.centerCircleActive, circleStyle]}
+          >
             <Ionicons
               name="grid-outline"
               size={26}
-              color={active === "dashboard" ? COLORS.primary : COLORS.muted}
+              color={dashActive ? COLORS.primary : COLORS.muted}
             />
-          </View>
-          <Text style={[styles.centerLabel, active === "dashboard" && styles.activeLabel]}>
-            Dashboard
-          </Text>
-        </Pressable>
+          </Animated.View>
+          <Text style={[styles.centerLabel, dashActive && styles.activeLabel]}>Dashboard</Text>
+        </PressableScale>
       </View>
     </View>
   );

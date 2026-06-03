@@ -1,12 +1,15 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { doc, getDoc } from "firebase/firestore";
 
 import AdBanner from "@/components/ad-banner";
 import { COLORS } from "@/components/auth-shell";
+import { AnimatedProgressBar } from "@/components/animated-progress-bar";
+import { PressableScale } from "@/components/pressable-scale";
 import { auth, firestore, trackEvent } from "@/lib/firebase";
 import { registerForPushNotifications, scheduleActivityReminder } from "@/lib/notifications";
 
@@ -169,8 +172,8 @@ export default function DashboardScreen() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.logo}>STEMM</Text>
-          <Pressable 
-            style={styles.avatarBtn} 
+          <PressableScale
+            style={styles.avatarBtn}
             onPress={() => router.push("/team" as any)}
           >
             <View style={styles.avatarCircle}>
@@ -178,7 +181,7 @@ export default function DashboardScreen() {
                 {userName ? userName.charAt(0).toUpperCase() : "M"}
               </Text>
             </View>
-          </Pressable>
+          </PressableScale>
         </View>
         <View style={styles.welcomeContainer}>
           <Text style={styles.welcomeText}>
@@ -192,7 +195,7 @@ export default function DashboardScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Progress Metrics Bar */}
-        <View style={styles.metricsCard}>
+        <Animated.View entering={FadeInDown.duration(400).springify()} style={styles.metricsCard}>
           <View style={styles.metricsHeader}>
             <Text style={styles.metricsTitle}>STEMM Sprint Goal</Text>
             <Text style={styles.metricsBadge}>Sprint 3</Text>
@@ -201,80 +204,89 @@ export default function DashboardScreen() {
             Explore and complete activity challenges to sync team data
           </Text>
           <View style={styles.progressContainer}>
-            <View style={styles.progressBarBg}>
-              <View style={styles.progressBarFill} />
-            </View>
+            <AnimatedProgressBar progress={0.85} color="#10B981" trackColor="#E2E8F0" height={8} />
             <Text style={styles.progressText}>85% Sprint Progress</Text>
           </View>
-        </View>
+        </Animated.View>
 
         <Text style={styles.sectionTitle}>Engineering Challenges</Text>
         <View style={styles.grid}>
-          {ENGINEERING.map((activity) => {
+          {ENGINEERING.map((activity, i) => {
             const theme = ACTIVITY_THEMES[activity.id] || ACTIVITY_THEMES.parachute;
             return (
-              <Pressable
+              <Animated.View
                 key={activity.id}
-                style={[styles.gridCard, { backgroundColor: theme.bg }]}
-                onPress={() => openActivity(activity)}
+                entering={FadeInDown.delay(i * 60).springify()}
+                style={styles.gridCardWrap}
               >
-                <View style={[styles.gridIconContainer, { backgroundColor: theme.iconBg }]}>
-                  <ActivityGlyph icon={activity.icon} size={28} color={theme.accent} />
-                </View>
-                <View style={styles.gridInfo}>
-                  <Text style={[styles.gridLabel, { color: theme.textColor }]} numberOfLines={2}>
-                    {activity.title}
-                  </Text>
-                  <View style={styles.cardFooter}>
-                    <Text style={[styles.cardLinkText, { color: theme.accent }]}>Start</Text>
-                    <Ionicons name="arrow-forward-sharp" size={14} color={theme.accent} />
+                <PressableScale
+                  style={[styles.gridCard, { backgroundColor: theme.bg }]}
+                  onPress={() => openActivity(activity)}
+                >
+                  <View style={[styles.gridIconContainer, { backgroundColor: theme.iconBg }]}>
+                    <ActivityGlyph icon={activity.icon} size={28} color={theme.accent} />
                   </View>
-                </View>
-              </Pressable>
+                  <View style={styles.gridInfo}>
+                    <Text style={[styles.gridLabel, { color: theme.textColor }]} numberOfLines={2}>
+                      {activity.title}
+                    </Text>
+                    <View style={styles.cardFooter}>
+                      <Text style={[styles.cardLinkText, { color: theme.accent }]}>Start</Text>
+                      <Ionicons name="arrow-forward-sharp" size={14} color={theme.accent} />
+                    </View>
+                  </View>
+                </PressableScale>
+              </Animated.View>
             );
           })}
         </View>
 
         <Text style={styles.sectionTitle}>Health and Medical Sciences</Text>
         <View style={styles.list}>
-          {HEALTH.map((activity) => {
+          {HEALTH.map((activity, i) => {
             const theme = ACTIVITY_THEMES[activity.id] || ACTIVITY_THEMES.performance;
             return (
-              <Pressable
+              <Animated.View
                 key={activity.id}
-                style={[styles.listRow, { backgroundColor: theme.bg }]}
-                onPress={() => openActivity(activity)}
+                entering={FadeInDown.delay(240 + i * 60).springify()}
               >
-                <View style={[styles.listIconContainer, { backgroundColor: theme.iconBg }]}>
-                  <ActivityGlyph icon={activity.icon} size={24} color={theme.accent} />
-                </View>
-                <View style={styles.listContent}>
-                  <Text style={[styles.listLabel, { color: theme.textColor }]}>{activity.title}</Text>
-                  <Text style={styles.listSubLabel}>Measure and log bio-data metrics</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={theme.accent} />
-              </Pressable>
+                <PressableScale
+                  style={[styles.listRow, { backgroundColor: theme.bg }]}
+                  onPress={() => openActivity(activity)}
+                >
+                  <View style={[styles.listIconContainer, { backgroundColor: theme.iconBg }]}>
+                    <ActivityGlyph icon={activity.icon} size={24} color={theme.accent} />
+                  </View>
+                  <View style={styles.listContent}>
+                    <Text style={[styles.listLabel, { color: theme.textColor }]}>{activity.title}</Text>
+                    <Text style={styles.listSubLabel}>Measure and log bio-data metrics</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={theme.accent} />
+                </PressableScale>
+              </Animated.View>
             );
           })}
         </View>
 
         <Text style={styles.sectionTitle}>Tools</Text>
         <View style={styles.list}>
-          <Pressable 
-            style={[styles.listRow, { backgroundColor: ACTIVITY_THEMES.map.bg }]} 
-            onPress={() => router.push("/map" as any)}
-          >
-            <View style={[styles.listIconContainer, { backgroundColor: ACTIVITY_THEMES.map.iconBg }]}>
-              <Ionicons name="map" size={24} color={ACTIVITY_THEMES.map.accent} />
-            </View>
-            <View style={styles.listContent}>
-              <Text style={[styles.listLabel, { color: ACTIVITY_THEMES.map.textColor }]}>
-                Interactive Activity Map
-              </Text>
-              <Text style={styles.listSubLabel}>Track and discover STEMM challenges around campus</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={ACTIVITY_THEMES.map.accent} />
-          </Pressable>
+          <Animated.View entering={FadeInDown.delay(420).springify()}>
+            <PressableScale
+              style={[styles.listRow, { backgroundColor: ACTIVITY_THEMES.map.bg }]}
+              onPress={() => router.push("/map" as any)}
+            >
+              <View style={[styles.listIconContainer, { backgroundColor: ACTIVITY_THEMES.map.iconBg }]}>
+                <Ionicons name="map" size={24} color={ACTIVITY_THEMES.map.accent} />
+              </View>
+              <View style={styles.listContent}>
+                <Text style={[styles.listLabel, { color: ACTIVITY_THEMES.map.textColor }]}>
+                  Interactive Activity Map
+                </Text>
+                <Text style={styles.listSubLabel}>Track and discover STEMM challenges around campus</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={ACTIVITY_THEMES.map.accent} />
+            </PressableScale>
+          </Animated.View>
         </View>
 
         <AdBanner style={styles.adBanner} />
@@ -378,19 +390,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
-  progressBarBg: {
-    flex: 1,
-    height: 8,
-    backgroundColor: "#E2E8F0",
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  progressBarFill: {
-    width: "85%",
-    height: "100%",
-    backgroundColor: "#10B981", // Beautiful green progress
-    borderRadius: 4,
-  },
   progressText: {
     fontSize: 12,
     fontWeight: "700",
@@ -411,8 +410,11 @@ const styles = StyleSheet.create({
     rowGap: 16,
     marginBottom: 16,
   },
-  gridCard: {
+  gridCardWrap: {
     width: "48%",
+  },
+  gridCard: {
+    width: "100%",
     borderRadius: 20,
     paddingVertical: 20,
     paddingHorizontal: 14,

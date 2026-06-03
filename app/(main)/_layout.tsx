@@ -9,7 +9,7 @@ export const unstable_settings = {
 export default function MainLayout() {
   return (
     <Tabs
-      screenOptions={{ headerShown: false }}
+      screenOptions={{ headerShown: false, animation: "fade" }}
       tabBar={(props) => <BottomNav {...props} />}
     >
       <Tabs.Screen name="leaderboard" />

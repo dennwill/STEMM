@@ -4,16 +4,26 @@ import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  FadeOut,
+  LinearTransition,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { COLORS } from "@/components/auth-shell";
+import { PressableScale } from "@/components/pressable-scale";
+import { DURATIONS, SPRINGS } from "@/constants/motion";
 import { friendlyError } from "@/lib/errors";
 import { auth, firestore } from "@/lib/firebase";
 
@@ -108,6 +118,17 @@ function PodiumSlot({
   );
 }
 
+function DropdownCaret({ open }: { open: boolean }) {
+  const rotation = useSharedValue(0);
+  rotation.value = withSpring(open ? 180 : 0, SPRINGS.bouncy);
+  const style = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
+  return (
+    <Animated.Text style={[styles.dropdownCaret, style]}>▾</Animated.Text>
+  );
+}
+
 export default function LeaderboardScreen() {
   const router = useRouter();
   const user = auth.currentUser;
@@ -177,14 +198,14 @@ export default function LeaderboardScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
         <Text style={styles.logo}>STEMM</Text>
-        <Pressable
+        <PressableScale
           onPress={handleRefresh}
           disabled={refreshing}
           hitSlop={12}
           style={[styles.refreshBtn, refreshing && styles.refreshBtnDisabled]}
         >
           <MaterialCommunityIcons name="refresh" size={26} color={COLORS.white} />
-        </Pressable>
+        </PressableScale>
       </View>
 
       <ScrollView
@@ -201,16 +222,25 @@ export default function LeaderboardScreen() {
       >
         <Text style={styles.pageTitle}>Leaderboard</Text>
 
-        <Pressable onPress={() => setShowGradeList((v) => !v)} style={styles.dropdownTrigger}>
+        <PressableScale
+          onPress={() => setShowGradeList((v) => !v)}
+          haptic={false}
+          style={styles.dropdownTrigger}
+        >
           <Text style={grade ? styles.dropdownValue : styles.dropdownPlaceholder}>
             {grade ?? "Grade Level"}
           </Text>
-          <Text style={styles.dropdownCaret}>{showGradeList ? "▴" : "▾"}</Text>
-        </Pressable>
+          <DropdownCaret open={showGradeList} />
+        </PressableScale>
 
         {showGradeList && (
-          <View style={styles.dropdownList}>
-            <Pressable
+          <Animated.View
+            entering={FadeIn.duration(DURATIONS.fast)}
+            exiting={FadeOut.duration(120)}
+            style={styles.dropdownList}
+          >
+            <PressableScale
+              haptic={false}
               onPress={() => {
                 setGrade(null);
                 setShowGradeList(false);
@@ -220,10 +250,11 @@ export default function LeaderboardScreen() {
               <Text style={[styles.dropdownItemText, !grade && styles.dropdownItemTextSelected]}>
                 All Grades
               </Text>
-            </Pressable>
+            </PressableScale>
             {GRADE_LEVELS.map((g) => (
-              <Pressable
+              <PressableScale
                 key={g}
+                haptic={false}
                 onPress={() => {
                   setGrade(g);
                   setShowGradeList(false);
@@ -235,9 +266,9 @@ export default function LeaderboardScreen() {
                 >
                   {g}
                 </Text>
-              </Pressable>
+              </PressableScale>
             ))}
-          </View>
+          </Animated.View>
         )}
 
         {loading ? (
@@ -254,7 +285,10 @@ export default function LeaderboardScreen() {
           </View>
         ) : (
           <>
-            <View style={styles.podium}>
+            <Animated.View
+              entering={FadeInDown.duration(400).springify()}
+              style={styles.podium}
+            >
               <View style={styles.podiumColumn}>
                 {second && <PodiumSlot team={second} rank={2} mine={second.id === myTeamId} />}
               </View>
@@ -264,13 +298,18 @@ export default function LeaderboardScreen() {
               <View style={styles.podiumColumn}>
                 {third && <PodiumSlot team={third} rank={3} mine={third.id === myTeamId} />}
               </View>
-            </View>
+            </Animated.View>
 
             <View style={styles.list}>
               {rest.map((t, i) => {
                 const mine = t.id === myTeamId;
                 return (
-                  <View key={t.id} style={[styles.listRow, mine && styles.listRowMine]}>
+                  <Animated.View
+                    key={t.id}
+                    entering={FadeInDown.delay(i * 50).springify()}
+                    layout={LinearTransition.springify()}
+                    style={[styles.listRow, mine && styles.listRowMine]}
+                  >
                     <View style={styles.listRank}>
                       <Text style={styles.listRankText}>{i + 4}</Text>
                     </View>
@@ -282,7 +321,7 @@ export default function LeaderboardScreen() {
                       <Text style={styles.listScore}>{t.score} pts</Text>
                     </View>
                     <Avatar id={t.id} size={40} ring={mine} />
-                  </View>
+                  </Animated.View>
                 );
               })}
             </View>
