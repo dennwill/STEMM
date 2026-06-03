@@ -63,7 +63,15 @@ export async function registerForPushNotifications(): Promise<string | null> {
 export async function scheduleActivityReminder(
   activityName: string,
   delayMinutes: number
-): Promise<string> {
+): Promise<string | null> {
+  // Requiring expo-notifications in Expo Go runs its push auto-registration
+  // side-effect module, which warns that remote notifications were removed in
+  // SDK 53. Skip here so the warning never fires; local reminders still work in
+  // a development/production build.
+  if (isExpoGo) {
+    return null;
+  }
+
   const Notifications = getNotifications();
   const identifier = await Notifications.scheduleNotificationAsync({
     content: {
@@ -80,6 +88,10 @@ export async function scheduleActivityReminder(
 }
 
 export async function cancelAllNotifications(): Promise<void> {
+  if (isExpoGo) {
+    return;
+  }
+
   const Notifications = getNotifications();
   await Notifications.cancelAllScheduledNotificationsAsync();
 }
