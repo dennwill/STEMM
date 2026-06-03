@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { Dispatch, SetStateAction, useState } from "react";
 import {
   Alert,
@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { COLORS } from "@/components/auth-shell";
+import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
 
 // Lavender accents that match the activity mockups. Kept local since they're
 // specific to this screen and not part of the shared auth palette.
@@ -66,7 +67,6 @@ type TrialId = (typeof TRIALS)[number]["id"];
 
 export default function FanScreen() {
   const router = useRouter();
-  const { activityTitle } = useLocalSearchParams<{ activityTitle?: string }>();
   const [step, setStep] = useState(0);
 
   // Activity state lives here (not inside each step) so navigating between
@@ -82,8 +82,10 @@ export default function FanScreen() {
   const isFirst = step === 0;
   const isLast = step === TABS.length - 1;
 
-  const goNext = () => {
+  const goNext = async () => {
     if (isLast) {
+      const award = await awardActivityCompletionPoints("fan", "Hand Fan Challenge");
+      Alert.alert("Activity complete", formatAwardPointsMessage(award));
       router.back();
       return;
     }

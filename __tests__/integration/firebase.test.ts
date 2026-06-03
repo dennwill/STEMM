@@ -21,13 +21,16 @@ jest.mock("firebase/firestore", () => ({
 }));
 
 const mockIsSupported = jest.fn();
-const mockGetAnalytics = jest.fn(() => ({ app: { name: "[DEFAULT]" } }));
-const mockLogEvent = jest.fn();
+const mockGetAnalytics = jest.fn((_app?: unknown) => ({ app: { name: "[DEFAULT]" } }));
+const mockLogEvent = jest.fn(
+  (_analytics?: unknown, _eventName?: string, _params?: Record<string, string | number>) => undefined,
+);
 
 jest.mock("firebase/analytics", () => ({
-  isSupported: (...args: unknown[]) => mockIsSupported(...args),
-  getAnalytics: (...args: unknown[]) => mockGetAnalytics(...args),
-  logEvent: (...args: unknown[]) => mockLogEvent(...args),
+  isSupported: () => mockIsSupported(),
+  getAnalytics: (app: unknown) => mockGetAnalytics(app),
+  logEvent: (analytics: unknown, eventName: string, params?: Record<string, string | number>) =>
+    mockLogEvent(analytics, eventName, params),
 }));
 
 import { initializeApp } from "firebase/app";

@@ -135,7 +135,7 @@ export default function DashboardScreen() {
             }
           }
         }
-      } catch (err) {
+      } catch {
         console.log("Could not fetch user/team details for greeting banner (using default style).");
       }
     };

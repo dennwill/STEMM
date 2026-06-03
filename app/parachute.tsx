@@ -1,5 +1,5 @@
 import { FontAwesome5 } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import {
@@ -20,6 +20,7 @@ import {
   createChallengeSession,
   createDataPoint,
 } from "@/lib/crud";
+import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
 
 // Lavender accents that match the activity mockups. Kept local since they're
 // specific to this screen and not part of the shared auth palette.
@@ -72,7 +73,6 @@ type TrialId = (typeof TRIALS)[number]["id"];
 export default function ParachuteScreen() {
   const router = useRouter();
   const db = useSQLiteContext();
-  const { activityTitle } = useLocalSearchParams<{ activityTitle?: string }>();
   const [step, setStep] = useState(0);
 
   // Activity state lives here (not inside each step) so navigating between
@@ -91,6 +91,7 @@ export default function ParachuteScreen() {
   const goNext = async () => {
     if (isLast) {
       // Persist the activity session and data points to SQLite
+      let localSaveMessage = "Activity data was saved locally.";
       try {
         const sessionId = await createChallengeSession(db, {
           team_id: 1, // default local team
@@ -115,10 +116,12 @@ export default function ParachuteScreen() {
           });
         }
 
-        Alert.alert("Saved!", "Your activity data has been saved locally.");
       } catch (err) {
         console.warn("Failed to save activity data:", err);
+        localSaveMessage = "Local activity data could not be saved.";
       }
+      const award = await awardActivityCompletionPoints("parachute", "Parachute Drop Challenge");
+      Alert.alert("Activity complete", `${localSaveMessage} ${formatAwardPointsMessage(award)}`);
       router.back();
       return;
     }

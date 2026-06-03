@@ -77,6 +77,7 @@ export default function CreateTeamScreen() {
       await setDoc(doc(firestore, "teams", code), {
         team_name: teamName.trim(),
         grade_level: gradeLevel,
+        score: 0,
         created_by_uid: user.uid,
         created_at: serverTimestamp(),
       });

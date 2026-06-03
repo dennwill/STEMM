@@ -1,0 +1,154 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Jest Test Evidence - 2026-06-03</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #111827; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; }
+  .terminal { width: 1280px; min-height: 720px; background: #0b1020; color: #d1d5db; padding: 28px; box-sizing: border-box; }
+  .bar { height: 32px; display: flex; align-items: center; gap: 8px; color: #9ca3af; border-bottom: 1px solid #1f2937; padding-bottom: 16px; margin-bottom: 20px; }
+  .dot { width: 12px; height: 12px; border-radius: 999px; display: inline-block; }
+  .red { background: #ef4444; } .yellow { background: #f59e0b; } .green { background: #22c55e; }
+  .title { margin-left: 12px; font-size: 14px; }
+  .prompt { color: #93c5fd; white-space: pre-wrap; font-size: 15px; line-height: 1.45; }
+  pre { margin: 0; white-space: pre-wrap; font-size: 14px; line-height: 1.42; }
+  .pass { color: #86efac; font-weight: 700; }
+  .summary { color: #fef08a; font-weight: 700; }
+</style>
+</head>
+<body>
+  <main class="terminal">
+    <div class="bar"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span><span class="title">STEMM Jest Test Evidence - 2026-06-03 Asia/Jakarta</span></div>
+    <div class="prompt">marsyaputra22@STEMM % npm test -- --runInBand</div>
+    <pre>
+&gt; stemm@1.0.0 test
+&gt; jest --runInBand
+
+PASS __tests__/unit/background-tasks.test.ts
+  ● Console
+
+    console.log
+      Background sync: fetched 5 teams from Firestore
+
+      at Object.log (lib/background-tasks.ts:12:13)
+
+    console.error
+      Background sync failed: Error: Network error
+          at Object.&lt;anonymous&gt; (/Users/marsyaputra22/Desktop/STEMM/__tests__/unit/background-tasks.test.ts:128:35)
+          at Generator.next (&lt;anonymous&gt;)
+          at asyncGeneratorStep (/Users/marsyaputra22/Desktop/STEMM/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/marsyaputra22/Desktop/STEMM/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+          at /Users/marsyaputra22/Desktop/STEMM/node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+          at new Promise (&lt;anonymous&gt;)
+          at Object.&lt;anonymous&gt; (/Users/marsyaputra22/Desktop/STEMM/node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+          at Promise.then.completed (/Users/marsyaputra22/Desktop/STEMM/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (&lt;anonymous&gt;)
+          at callAsyncCircusFn (/Users/marsyaputra22/Desktop/STEMM/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/Users/marsyaputra22/Desktop/STEMM/node_modules/jest-circus/build/run.js:316:40)
+          at _runTest (/Users/marsyaputra22/Desktop/STEMM/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/Users/marsyaputra22/Desktop/STEMM/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/Users/marsyaputra22/Desktop/STEMM/node_modules/jest-circus/build/run.js:121:9)
+          at run (/Users/marsyaputra22/Desktop/STEMM/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/Users/marsyaputra22/Desktop/STEMM/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/Users/marsyaputra22/Desktop/STEMM/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/Users/marsyaputra22/Desktop/STEMM/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/Users/marsyaputra22/Desktop/STEMM/node_modules/jest-runner/build/runTest.js:444:34)
+
+      13 |     return BackgroundFetch.BackgroundFetchResult.NewData;
+      14 |   } catch (error) {
+    &gt; 15 |     console.error("Background sync failed:", error);
+         |             ^
+      16 |     return BackgroundFetch.BackgroundFetchResult.Failed;
+      17 |   }
+      18 | });
+
+      at Object.error (lib/background-tasks.ts:15:13)
+          at Generator.throw (&lt;anonymous&gt;)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.error
+      Background sync failed: Error: permission-denied
+          at Object.&lt;anonymous&gt; (/Users/marsyaputra22/Desktop/STEMM/__tests__/unit/background-tasks.test.ts:136:35)
+          at Generator.next (&lt;anonymous&gt;)
+          at asyncGeneratorStep (/Users/marsyaputra22/Desktop/STEMM/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/marsyaputra22/Desktop/STEMM/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+          at /Users/marsyaputra22/Desktop/STEMM/node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+          at new Promise (&lt;anonymous&gt;)
+          at Object.&lt;anonymous&gt; (/Users/marsyaputra22/Desktop/STEMM/node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+          at Promise.then.completed (/Users/marsyaputra22/Desktop/STEMM/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (&lt;anonymous&gt;)
+          at callAsyncCircusFn (/Users/marsyaputra22/Desktop/STEMM/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/Users/marsyaputra22/Desktop/STEMM/node_modules/jest-circus/build/run.js:316:40)
+          at _runTest (/Users/marsyaputra22/Desktop/STEMM/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/Users/marsyaputra22/Desktop/STEMM/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/Users/marsyaputra22/Desktop/STEMM/node_modules/jest-circus/build/run.js:121:9)
+          at run (/Users/marsyaputra22/Desktop/STEMM/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/Users/marsyaputra22/Desktop/STEMM/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/Users/marsyaputra22/Desktop/STEMM/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/Users/marsyaputra22/Desktop/STEMM/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/Users/marsyaputra22/Desktop/STEMM/node_modules/jest-runner/build/runTest.js:444:34)
+
+      13 |     return BackgroundFetch.BackgroundFetchResult.NewData;
+      14 |   } catch (error) {
+    &gt; 15 |     console.error("Background sync failed:", error);
+         |             ^
+      16 |     return BackgroundFetch.BackgroundFetchResult.Failed;
+      17 |   }
+      18 | });
+
+      at Object.error (lib/background-tasks.ts:15:13)
+          at Generator.throw (&lt;anonymous&gt;)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+PASS __tests__/integration/firebase.test.ts
+PASS __tests__/unit/notifications.test.ts
+  ● Console
+
+    console.warn
+      Notification permission not granted
+
+      19 |
+      20 |   if (finalStatus !== "granted") {
+    &gt; 21 |     console.warn("Notification permission not granted");
+         |             ^
+      22 |     return null;
+      23 |   }
+      24 |
+
+      at warn (lib/notifications.ts:21:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.warn
+      Notification permission not granted
+
+      19 |
+      20 |   if (finalStatus !== "granted") {
+    &gt; 21 |     console.warn("Notification permission not granted");
+         |             ^
+      22 |     return null;
+      23 |   }
+      24 |
+
+      at warn (lib/notifications.ts:21:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+PASS __tests__/unit/crud.test.ts
+PASS __tests__/integration/errors.test.ts
+PASS __tests__/integration/theme.test.ts
+PASS __tests__/e2e/app-config.test.ts
+PASS __tests__/unit/discriminant.test.ts
+
+Test Suites: 8 passed, 8 total
+Tests:       102 passed, 102 total
+Snapshots:   0 total
+Time:        3.809 s
+Ran all test suites.
+</pre>
+  </main>
+</body>
+</html>

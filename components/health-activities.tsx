@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { COLORS } from "@/components/auth-shell";
+import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
 
 const ACCENT = {
   tabActive: "#DCDDF2",
@@ -36,6 +37,7 @@ type Trial = {
 };
 
 type ActivityShellProps<TrialId extends string, Measurement> = {
+  activityId: string;
   title: string;
   trials: readonly (Trial & { id: TrialId })[];
   predictionPrompt: string;
@@ -69,6 +71,7 @@ type WriteUpStateProps<TrialId extends string, Measurement> = MeasurementProps<
 };
 
 function ActivityShell<TrialId extends string, Measurement>({
+  activityId,
   title,
   trials,
   predictionPrompt,
@@ -97,7 +100,7 @@ function ActivityShell<TrialId extends string, Measurement>({
   const isFirst = step === 0;
   const isLast = step === TABS.length - 1;
 
-  const goNext = () => {
+  const goNext = async () => {
     if (current === "Recorder" && recorderBusy) {
       Alert.alert("Recorder running", "Stop the current recorder before continuing.");
       return;
@@ -107,6 +110,8 @@ function ActivityShell<TrialId extends string, Measurement>({
       return;
     }
     if (isLast) {
+      const award = await awardActivityCompletionPoints(activityId, title);
+      Alert.alert("Activity complete", formatAwardPointsMessage(award));
       router.back();
       return;
     }
@@ -472,6 +477,7 @@ type PerformanceMeasurement = { elapsed: number; beats: number };
 export function HumanPerformanceLabScreen() {
   return (
     <ActivityShell<PerformanceTrialId, PerformanceMeasurement>
+      activityId="performance"
       title="Human Performance Lab"
       trials={PERFORMANCE_TRIALS}
       predictionPrompt="Predict when your pulse rate will be highest."
@@ -730,6 +736,7 @@ type ReactionMeasurement = { rounds: number[] };
 export function ReactionBoardChallengeScreen() {
   return (
     <ActivityShell<ReactionTrialId, ReactionMeasurement>
+      activityId="reaction"
       title="Reaction Board Challenge"
       trials={REACTION_TRIALS}
       predictionPrompt="Predict which condition will have the fastest reaction time."
@@ -1043,6 +1050,7 @@ function isBreathingMeasurementComplete(trial: BreathingTrial, measurement: Brea
 export function BreathingPaceTrainerScreen() {
   return (
     <ActivityShell<BreathingTrialId, BreathingMeasurement>
+      activityId="breathing"
       title="Breathing Pace Trainer"
       trials={BREATHING_TRIALS}
       predictionPrompt="Predict which breathing pattern will make your breathing feel slowest and calmest."
