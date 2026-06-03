@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -22,8 +23,16 @@ type LocationData = {
 
 function loadNativeMaps() {
   if (Platform.OS === "web") return null;
-  const moduleName = "react-native-maps";
-  return eval("require")(moduleName) as any;
+  // react-native-maps ships native code that isn't present in Expo Go.
+  // Only load it outside Expo Go (i.e. in a development/standalone build).
+  if (Constants.executionEnvironment === "storeClient") return null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require("react-native-maps") as any;
+  } catch (err) {
+    console.log("Could not load react-native-maps:", err);
+    return null;
+  }
 }
 
 const nativeMaps = loadNativeMaps();

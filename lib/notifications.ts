@@ -1,12 +1,32 @@
-import * as Notifications from "expo-notifications";
-import * as Device from "expo-device";
 import Constants from "expo-constants";
+import * as Device from "expo-device";
+
+// Remote (push) notifications were removed from Expo Go in SDK 53.
+// Detect Expo Go so we can skip push registration there and avoid running
+// expo-notifications' push auto-registration side-effects at app launch.
+const isExpoGo = Constants.executionEnvironment === "storeClient";
+
+// Lazy-load expo-notifications only when a notification API is actually used,
+// so its side-effect modules don't execute (and warn) on app startup.
+function getNotifications() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require("expo-notifications") as typeof import("expo-notifications");
+}
 
 export async function registerForPushNotifications(): Promise<string | null> {
+  if (isExpoGo) {
+    console.warn(
+      "Push notifications require a development build (not available in Expo Go)"
+    );
+    return null;
+  }
+
   if (!Device.isDevice) {
     console.warn("Push notifications require a physical device");
     return null;
   }
+
+  const Notifications = getNotifications();
 
   const { status: existingStatus } =
     await Notifications.getPermissionsAsync();
@@ -23,13 +43,13 @@ export async function registerForPushNotifications(): Promise<string | null> {
   }
 
   Notifications.setNotificationHandler({
-	    handleNotification: async () => ({
-	      shouldShowAlert: true,
-	      shouldShowBanner: true,
-	      shouldShowList: true,
-	      shouldPlaySound: true,
-	      shouldSetBadge: false,
-	    }),
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
   });
 
   const projectId = Constants.expoConfig?.extra?.eas?.projectId;
@@ -44,6 +64,7 @@ export async function scheduleActivityReminder(
   activityName: string,
   delayMinutes: number
 ): Promise<string> {
+  const Notifications = getNotifications();
   const identifier = await Notifications.scheduleNotificationAsync({
     content: {
       title: "STEMM Reminder",
@@ -59,5 +80,6 @@ export async function scheduleActivityReminder(
 }
 
 export async function cancelAllNotifications(): Promise<void> {
+  const Notifications = getNotifications();
   await Notifications.cancelAllScheduledNotificationsAsync();
 }
