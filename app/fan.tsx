@@ -379,9 +379,9 @@ function Recorder({ videos, setVideos }: VideosProps) {
 
 // The 3 questions asked for every design (the mockup table's columns).
 const WRITEUP_QUESTIONS = [
-  { label: "Prediction (more or less movement than the others?)" },
+  { label: "Prediction (more or less movement than the others?)", options: ["More", "Less"] },
   { label: "Outcome (how much did the paper move?)" },
-  { label: "Were you right?" },
+  { label: "Were you right?", options: ["Yes", "No"] },
 ];
 
 type WriteUpProps = {
@@ -406,13 +406,36 @@ function WriteUp({ videos, answers, setAnswers, reflection, setReflection }: Wri
             return (
               <View key={key} style={styles.field}>
                 <Text style={styles.fieldLabel}>{q.label}</Text>
-                <TextInput
-                  style={styles.fieldInput}
-                  value={answers[key] ?? ""}
-                  onChangeText={(v) => setAnswers((prev) => ({ ...prev, [key]: v }))}
-                  multiline
-                  textAlignVertical="top"
-                />
+                {q.options ? (
+                  <View style={styles.choiceRow}>
+                    {q.options.map((opt) => {
+                      const active = answers[key] === opt;
+                      return (
+                        <Pressable
+                          key={opt}
+                          style={[styles.choiceChip, active && styles.choiceChipActive]}
+                          onPress={() =>
+                            setAnswers((prev) => ({ ...prev, [key]: active ? "" : opt }))
+                          }
+                        >
+                          <Text
+                            style={[styles.choiceChipText, active && styles.choiceChipTextActive]}
+                          >
+                            {opt}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ) : (
+                  <TextInput
+                    style={styles.fieldInput}
+                    value={answers[key] ?? ""}
+                    onChangeText={(v) => setAnswers((prev) => ({ ...prev, [key]: v }))}
+                    multiline
+                    textAlignVertical="top"
+                  />
+                )}
               </View>
             );
           })}

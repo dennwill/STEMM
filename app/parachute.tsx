@@ -429,7 +429,7 @@ function pad(n: number) {
 const WRITEUP_QUESTIONS = [
   { label: "How will it take to hit the ground?" },
   { label: "Time to hit the ground", auto: true },
-  { label: "Were you right?" },
+  { label: "Were you right?", options: ["Yes", "No"] },
   { label: "Time (time from first hitting the ground and stop moving) — need slow motion." },
 ];
 
@@ -459,15 +459,40 @@ function WriteUp({ times, answers, setAnswers, reflection, setReflection }: Writ
             return (
               <View key={key} style={styles.field}>
                 <Text style={styles.fieldLabel}>{q.label}</Text>
-                <TextInput
-                  style={styles.fieldInput}
-                  value={value}
-                  onChangeText={(v) => setAnswers((prev) => ({ ...prev, [key]: v }))}
-                  multiline
-                  textAlignVertical="top"
-                />
-                {showMeasured && (
-                  <Text style={styles.fieldHint}>Measured in the Recorder — edit if needed.</Text>
+                {q.options ? (
+                  <View style={styles.choiceRow}>
+                    {q.options.map((opt) => {
+                      const active = answers[key] === opt;
+                      return (
+                        <Pressable
+                          key={opt}
+                          style={[styles.choiceChip, active && styles.choiceChipActive]}
+                          onPress={() =>
+                            setAnswers((prev) => ({ ...prev, [key]: active ? "" : opt }))
+                          }
+                        >
+                          <Text
+                            style={[styles.choiceChipText, active && styles.choiceChipTextActive]}
+                          >
+                            {opt}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ) : (
+                  <>
+                    <TextInput
+                      style={styles.fieldInput}
+                      value={value}
+                      onChangeText={(v) => setAnswers((prev) => ({ ...prev, [key]: v }))}
+                      multiline
+                      textAlignVertical="top"
+                    />
+                    {showMeasured && (
+                      <Text style={styles.fieldHint}>Measured in the Recorder — edit if needed.</Text>
+                    )}
+                  </>
                 )}
               </View>
             );
