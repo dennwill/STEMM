@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
+import { useSQLiteContext } from "expo-sqlite";
 import { Dispatch, SetStateAction, useState } from "react";
 import {
   Alert,
@@ -16,6 +17,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { COLORS } from "@/components/auth-shell";
+import { createChallengeSession, createDataPoint } from "@/lib/crud";
+import { LOCAL_ACTIVITY_IDS, LOCAL_TEAM_ID } from "@/lib/db";
 import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
 
 // Lavender accents that match the activity mockups. Kept local since they're
@@ -67,6 +70,7 @@ type TrialId = (typeof TRIALS)[number]["id"];
 
 export default function FanScreen() {
   const router = useRouter();
+  const db = useSQLiteContext();
   const [step, setStep] = useState(0);
 
   // Activity state lives here (not inside each step) so navigating between
@@ -84,8 +88,37 @@ export default function FanScreen() {
 
   const goNext = async () => {
     if (isLast) {
+      // Persist the activity session and data points to SQLite
+      let localSaveMessage = "Activity data was saved locally.";
+      try {
+        const sessionId = await createChallengeSession(db, {
+          team_id: LOCAL_TEAM_ID,
+          activity_id: LOCAL_ACTIVITY_IDS.fan,
+          prediction_text: prediction.choice
+            ? `${prediction.choice}: ${prediction.reason}`
+            : null,
+          discussion_reflection: reflection || null,
+        });
+
+        // Save each fan design as a data point, keeping its uploaded video.
+        for (const trial of TRIALS) {
+          const video = videos[trial.id];
+          await createDataPoint(db, {
+            session_id: sessionId,
+            attempt_number: TRIALS.indexOf(trial) + 1,
+            action_or_design: trial.title,
+            prediction_value: prediction.choice === trial.short ? "predicted strongest" : null,
+            outcome_value: video ? "video uploaded" : null,
+            prediction_correct: prediction.choice === trial.short && video ? true : null,
+            media_file_path: video || null,
+          });
+        }
+      } catch (err) {
+        console.warn("Failed to save activity data:", err);
+        localSaveMessage = "Local activity data could not be saved.";
+      }
       const award = await awardActivityCompletionPoints("fan", "Hand Fan Challenge");
-      Alert.alert("Activity complete", formatAwardPointsMessage(award));
+      Alert.alert("Activity complete", `${localSaveMessage} ${formatAwardPointsMessage(award)}`);
       router.back();
       return;
     }

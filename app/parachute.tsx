@@ -20,6 +20,7 @@ import {
   createChallengeSession,
   createDataPoint,
 } from "@/lib/crud";
+import { LOCAL_ACTIVITY_IDS, LOCAL_TEAM_ID } from "@/lib/db";
 import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
 
 // Lavender accents that match the activity mockups. Kept local since they're
@@ -94,8 +95,8 @@ export default function ParachuteScreen() {
       let localSaveMessage = "Activity data was saved locally.";
       try {
         const sessionId = await createChallengeSession(db, {
-          team_id: 1, // default local team
-          activity_id: 1, // Parachute Drop Challenge
+          team_id: LOCAL_TEAM_ID,
+          activity_id: LOCAL_ACTIVITY_IDS.parachute,
           prediction_text: prediction.choice
             ? `${prediction.choice}: ${prediction.reason}`
             : null,

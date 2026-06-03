@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Accelerometer, Gyroscope } from "expo-sensors";
+import { useSQLiteContext } from "expo-sqlite";
 import { Dispatch, SetStateAction, useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -17,6 +18,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { COLORS } from "@/components/auth-shell";
+import { createChallengeSession, createDataPoint } from "@/lib/crud";
+import { LOCAL_ACTIVITY_IDS, LOCAL_TEAM_ID } from "@/lib/db";
 import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
 
 // Lavender accents that match the activity mockups. Kept local since they're
@@ -42,6 +45,7 @@ const TRIALS = [
 
 export default function EarthquakeScreen() {
   const router = useRouter();
+  const db = useSQLiteContext();
   const [step, setStep] = useState(0);
 
   // Activity state lives here (not inside each step) so navigating between
@@ -56,11 +60,40 @@ export default function EarthquakeScreen() {
 
   const goNext = async () => {
     if (isLast) {
+      // Persist the activity session and data points to SQLite. This activity
+      // has no per-trial measurement (the Recorder is a standalone vibration
+      // test), so each design row just records the predicted choice.
+      let localSaveMessage = "Activity data was saved locally.";
+      try {
+        const sessionId = await createChallengeSession(db, {
+          team_id: LOCAL_TEAM_ID,
+          activity_id: LOCAL_ACTIVITY_IDS.earthquake,
+          prediction_text: prediction.choice
+            ? `${prediction.choice}: ${prediction.reason}`
+            : null,
+          discussion_reflection: reflection || null,
+        });
+
+        for (const trial of TRIALS) {
+          await createDataPoint(db, {
+            session_id: sessionId,
+            attempt_number: TRIALS.indexOf(trial) + 1,
+            action_or_design: trial.title,
+            prediction_value: prediction.choice === trial.short ? "predicted most stable" : null,
+            outcome_value: null,
+            prediction_correct: null,
+            media_file_path: null,
+          });
+        }
+      } catch (err) {
+        console.warn("Failed to save activity data:", err);
+        localSaveMessage = "Local activity data could not be saved.";
+      }
       const award = await awardActivityCompletionPoints(
         "earthquake",
         "Earthquake-Resistant Structure",
       );
-      Alert.alert("Activity complete", formatAwardPointsMessage(award));
+      Alert.alert("Activity complete", `${localSaveMessage} ${formatAwardPointsMessage(award)}`);
       router.back();
       return;
     }

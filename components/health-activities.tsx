@@ -1,5 +1,6 @@
 import { FontAwesome5 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useSQLiteContext } from "expo-sqlite";
 import { Dispatch, ReactElement, SetStateAction, useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -15,6 +16,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { COLORS } from "@/components/auth-shell";
+import { createChallengeSession, createDataPoint } from "@/lib/crud";
+import { LOCAL_ACTIVITY_IDS, LOCAL_TEAM_ID } from "@/lib/db";
 import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
 
 const ACCENT = {
@@ -37,7 +40,7 @@ type Trial = {
 };
 
 type ActivityShellProps<TrialId extends string, Measurement> = {
-  activityId: string;
+  activityId: keyof typeof LOCAL_ACTIVITY_IDS;
   title: string;
   trials: readonly (Trial & { id: TrialId })[];
   predictionPrompt: string;
@@ -51,6 +54,10 @@ type ActivityShellProps<TrialId extends string, Measurement> = {
   renderDiscussion: () => ReactElement;
   canContinueFromRecorder?: (measurements: Record<TrialId, Measurement>) => boolean;
   recorderIncompleteMessage?: string;
+  // Serializes a trial's measurement into a human-readable outcome for the
+  // local data point ("" when incomplete). Each screen already passes the same
+  // formatter to its Write-Up.
+  formatMeasurement?: (measurement: Measurement) => string;
 };
 
 type MeasurementProps<TrialId extends string, Measurement> = {
@@ -85,8 +92,10 @@ function ActivityShell<TrialId extends string, Measurement>({
   renderDiscussion,
   canContinueFromRecorder,
   recorderIncompleteMessage = "Complete all recorder trials before continuing.",
+  formatMeasurement,
 }: ActivityShellProps<TrialId, Measurement>) {
   const router = useRouter();
+  const db = useSQLiteContext();
   const [step, setStep] = useState(0);
   const [prediction, setPrediction] = useState<PredictionValue>({ choice: "", reason: "" });
   const [reflection, setReflection] = useState("");
@@ -110,8 +119,37 @@ function ActivityShell<TrialId extends string, Measurement>({
       return;
     }
     if (isLast) {
+      // Persist the activity session and per-trial data points to SQLite.
+      let localSaveMessage = "Activity data was saved locally.";
+      try {
+        const sessionId = await createChallengeSession(db, {
+          team_id: LOCAL_TEAM_ID,
+          activity_id: LOCAL_ACTIVITY_IDS[activityId],
+          prediction_text: prediction.choice
+            ? `${prediction.choice}: ${prediction.reason}`
+            : null,
+          discussion_reflection: reflection || null,
+        });
+
+        for (let i = 0; i < trials.length; i++) {
+          const trial = trials[i];
+          const outcome = formatMeasurement?.(measurements[trial.id]) || null;
+          await createDataPoint(db, {
+            session_id: sessionId,
+            attempt_number: i + 1,
+            action_or_design: trial.title,
+            prediction_value: prediction.choice === trial.short ? "predicted" : null,
+            outcome_value: outcome,
+            prediction_correct: prediction.choice === trial.short && outcome ? true : null,
+            media_file_path: null,
+          });
+        }
+      } catch (err) {
+        console.warn("Failed to save activity data:", err);
+        localSaveMessage = "Local activity data could not be saved.";
+      }
       const award = await awardActivityCompletionPoints(activityId, title);
-      Alert.alert("Activity complete", formatAwardPointsMessage(award));
+      Alert.alert("Activity complete", `${localSaveMessage} ${formatAwardPointsMessage(award)}`);
       router.back();
       return;
     }
@@ -479,6 +517,7 @@ export function HumanPerformanceLabScreen() {
     <ActivityShell<PerformanceTrialId, PerformanceMeasurement>
       activityId="performance"
       title="Human Performance Lab"
+      formatMeasurement={formatPerformanceMeasurement}
       trials={PERFORMANCE_TRIALS}
       predictionPrompt="Predict when your pulse rate will be highest."
       predictionLead="I predict my pulse will be highest during"
@@ -737,6 +776,7 @@ export function ReactionBoardChallengeScreen() {
   return (
     <ActivityShell<ReactionTrialId, ReactionMeasurement>
       activityId="reaction"
+      formatMeasurement={formatReactionMeasurement}
       title="Reaction Board Challenge"
       trials={REACTION_TRIALS}
       predictionPrompt="Predict which condition will have the fastest reaction time."
@@ -1051,6 +1091,7 @@ export function BreathingPaceTrainerScreen() {
   return (
     <ActivityShell<BreathingTrialId, BreathingMeasurement>
       activityId="breathing"
+      formatMeasurement={formatBreathingMeasurement}
       title="Breathing Pace Trainer"
       trials={BREATHING_TRIALS}
       predictionPrompt="Predict which breathing pattern will make your breathing feel slowest and calmest."

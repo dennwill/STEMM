@@ -7,6 +7,7 @@ import {
   useAudioRecorderState,
 } from "expo-audio";
 import { useRouter } from "expo-router";
+import { useSQLiteContext } from "expo-sqlite";
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -22,6 +23,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { COLORS } from "@/components/auth-shell";
+import { createChallengeSession, createDataPoint } from "@/lib/crud";
+import { LOCAL_ACTIVITY_IDS, LOCAL_TEAM_ID } from "@/lib/db";
 import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
 
 // Lavender accents that match the activity mockups. Kept local since they're
@@ -73,6 +76,7 @@ type TrialId = (typeof TRIALS)[number]["id"];
 
 export default function SoundScreen() {
   const router = useRouter();
+  const db = useSQLiteContext();
   const [step, setStep] = useState(0);
 
   // Activity state lives here (not inside each step) so navigating between
@@ -90,8 +94,37 @@ export default function SoundScreen() {
 
   const goNext = async () => {
     if (isLast) {
+      // Persist the activity session and data points to SQLite
+      let localSaveMessage = "Activity data was saved locally.";
+      try {
+        const sessionId = await createChallengeSession(db, {
+          team_id: LOCAL_TEAM_ID,
+          activity_id: LOCAL_ACTIVITY_IDS.sound,
+          prediction_text: prediction.choice
+            ? `${prediction.choice}: ${prediction.reason}`
+            : null,
+          discussion_reflection: reflection || null,
+        });
+
+        // Save each action's measured level as a data point
+        for (const trial of TRIALS) {
+          const level = levels[trial.id];
+          await createDataPoint(db, {
+            session_id: sessionId,
+            attempt_number: TRIALS.indexOf(trial) + 1,
+            action_or_design: trial.title,
+            prediction_value: prediction.choice === trial.short ? "predicted loudest" : null,
+            outcome_value: level > 0 ? formatDb(level) : null,
+            prediction_correct: prediction.choice === trial.short && level > 0 ? true : null,
+            media_file_path: null,
+          });
+        }
+      } catch (err) {
+        console.warn("Failed to save activity data:", err);
+        localSaveMessage = "Local activity data could not be saved.";
+      }
       const award = await awardActivityCompletionPoints("sound", "Sound Pollution Hunter");
-      Alert.alert("Activity complete", formatAwardPointsMessage(award));
+      Alert.alert("Activity complete", `${localSaveMessage} ${formatAwardPointsMessage(award)}`);
       router.back();
       return;
     }
