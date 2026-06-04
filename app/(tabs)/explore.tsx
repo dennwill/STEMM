@@ -89,7 +89,7 @@ export default function AboutScreen() {
         <Text style={styles.sectionTitle}>How It Works</Text>
         <View style={styles.card}>
           {[
-            "Choose an activity from the Dashboard.",
+            "Choose an activity from Games.",
             "Read the Instructions and make a Prediction.",
             "Use the Recorder with real device sensors.",
             "Complete the Write-Up and Discussion steps.",

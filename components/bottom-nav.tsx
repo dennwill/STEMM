@@ -108,7 +108,7 @@ export function BottomNav({ state, navigation, insets }: BottomTabBarProps) {
               color={dashActive ? c.primary : c.muted}
             />
           </Animated.View>
-          <Text style={[styles.centerLabel, dashActive && styles.activeLabel]}>Dashboard</Text>
+          <Text style={[styles.centerLabel, dashActive && styles.activeLabel]}>Games</Text>
         </PressableScale>
       </View>
     </View>
