@@ -2,7 +2,7 @@ import { useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { COLORS } from "@/components/auth-shell";
+import { Palette, useThemedStyles } from "@/lib/theme";
 
 const SECTIONS = [
   {
@@ -49,6 +49,7 @@ const SECTIONS = [
 
 export default function PrivacyScreen() {
   const router = useRouter();
+  const styles = useThemedStyles(makeStyles);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -77,8 +78,9 @@ export default function PrivacyScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+  safe: { flex: 1, backgroundColor: c.bg },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -87,38 +89,38 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   backBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
-  backArrow: { color: COLORS.primary, fontSize: 34, fontWeight: "700", lineHeight: 36 },
-  title: { color: COLORS.primary, fontSize: 22, fontWeight: "800", marginLeft: 8, flex: 1 },
+  backArrow: { color: c.primary, fontSize: 34, fontWeight: "700", lineHeight: 36 },
+  title: { color: c.primary, fontSize: 22, fontWeight: "800", marginLeft: 8, flex: 1 },
   scrollContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 32 },
   lastUpdated: {
-    color: COLORS.muted,
+    color: c.muted,
     fontSize: 13,
     fontWeight: "600",
     marginBottom: 12,
     textAlign: "center",
   },
   intro: {
-    color: COLORS.inputText,
+    color: c.inputText,
     fontSize: 15,
     lineHeight: 23,
     marginBottom: 16,
   },
   card: {
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     borderRadius: 16,
     padding: 20,
     marginBottom: 12,
     boxShadow: "0px 1px 6px rgba(0, 0, 0, 0.05)",
   },
   sectionTitle: {
-    color: COLORS.primary,
+    color: c.primary,
     fontSize: 16,
     fontWeight: "700",
     marginBottom: 8,
   },
   sectionBody: {
-    color: COLORS.inputText,
+    color: c.inputText,
     fontSize: 15,
     lineHeight: 23,
   },
-});
+  });

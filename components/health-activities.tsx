@@ -1,7 +1,7 @@
 import { FontAwesome5 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { Dispatch, ReactElement, SetStateAction, useEffect, useRef, useState } from "react";
+import { Dispatch, ReactElement, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -15,17 +15,40 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { COLORS } from "@/components/auth-shell";
 import { createChallengeSession, createDataPoint } from "@/lib/crud";
 import { LOCAL_ACTIVITY_IDS, LOCAL_TEAM_ID } from "@/lib/db";
 import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
+import { Palette, useTheme } from "@/lib/theme";
 
-const ACCENT = {
+type Accent = {
+  tabActive: string;
+  tableHeader: string;
+  softHeader: string;
+  border: string;
+};
+
+const LIGHT_ACCENT: Accent = {
   tabActive: "#DCDDF2",
   tableHeader: "#C9CCEC",
   softHeader: "#EFEDF8",
   border: "#E2E2EC",
 };
+
+const DARK_ACCENT: Accent = {
+  tabActive: "#2E3550",
+  tableHeader: "#3A4060",
+  softHeader: "#222A3D",
+  border: "#333A4A",
+};
+
+/** Theme-reactive styles for the activity shell + recorders. */
+function useActivityStyles() {
+  const { palette, isDark } = useTheme();
+  return useMemo(
+    () => makeStyles(palette, isDark ? DARK_ACCENT : LIGHT_ACCENT),
+    [palette, isDark],
+  );
+}
 
 const TABS = ["Instructions", "Prediction", "Recorder", "Write-Up", "Discussion"] as const;
 
@@ -96,6 +119,7 @@ function ActivityShell<TrialId extends string, Measurement>({
 }: ActivityShellProps<TrialId, Measurement>) {
   const router = useRouter();
   const db = useSQLiteContext();
+  const styles = useActivityStyles();
   const [step, setStep] = useState(0);
   const [prediction, setPrediction] = useState<PredictionValue>({ choice: "", reason: "" });
   const [reflection, setReflection] = useState("");
@@ -241,12 +265,14 @@ function ActivityShell<TrialId extends string, Measurement>({
 }
 
 function UploadEvidenceRow({ label = "Upload video" }: { label?: string }) {
+  const { palette: c } = useTheme();
+  const styles = useActivityStyles();
   return (
     <Pressable
       style={styles.uploadRow}
       onPress={() => Alert.alert(label, "Upload is coming soon.")}
     >
-      <FontAwesome5 name="film" size={16} color={COLORS.primary} />
+      <FontAwesome5 name="film" size={16} color={c.primary} />
       <Text style={styles.uploadRowText}>{label}</Text>
     </Pressable>
   );
@@ -263,6 +289,7 @@ function InstructionsContent({
   instructions: string[];
   diagram: string[];
 }) {
+  const styles = useActivityStyles();
   return (
     <View style={styles.card}>
       <Text style={styles.blockTitle}>Overview</Text>
@@ -303,6 +330,8 @@ function Prediction({
   tail: string;
   options: string[];
 }) {
+  const { palette: c } = useTheme();
+  const styles = useActivityStyles();
   return (
     <View style={styles.card}>
       <Text style={styles.promptTitle}>{prompt}</Text>
@@ -328,7 +357,7 @@ function Prediction({
       <TextInput
         style={styles.textArea}
         placeholder="Type your reason here.."
-        placeholderTextColor={COLORS.muted}
+        placeholderTextColor={c.muted}
         value={value.reason}
         onChangeText={(reason) => onChange({ ...value, reason })}
         multiline
@@ -347,6 +376,7 @@ function TrialTabs<TrialId extends string>({
   active: TrialId;
   onSelect: (id: TrialId) => void;
 }) {
+  const styles = useActivityStyles();
   return (
     <View style={styles.subTabBar}>
       {trials.map((t) => (
@@ -381,6 +411,8 @@ function StandardWriteUp<TrialId extends string, Measurement>({
   reflectionPrompt: string;
   formatMeasurement: (m: Measurement) => string;
 }) {
+  const { palette: c } = useTheme();
+  const styles = useActivityStyles();
   return (
     <View style={styles.stack}>
       {trials.map((trial) => (
@@ -418,7 +450,7 @@ function StandardWriteUp<TrialId extends string, Measurement>({
         <TextInput
           style={styles.textArea}
           placeholder="Type your reflection here.."
-          placeholderTextColor={COLORS.muted}
+          placeholderTextColor={c.muted}
           value={reflection}
           onChangeText={setReflection}
           multiline
@@ -444,6 +476,7 @@ function DiscussionContent({
   formula: string;
   explanation: string;
 }) {
+  const styles = useActivityStyles();
   return (
     <View style={styles.card}>
       <Text style={styles.sectionHeading}>{heading}</Text>
@@ -597,6 +630,7 @@ function PerformanceRecorder({
   setMeasurements,
   setRecorderBusy,
 }: MeasurementProps<PerformanceTrialId, PerformanceMeasurement>) {
+  const styles = useActivityStyles();
   const [trial, setTrial] = useState<PerformanceTrialId>(trials[0].id);
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(measurements[trials[0].id].elapsed);
@@ -854,6 +888,7 @@ function ReactionRecorder({
   setMeasurements,
   setRecorderBusy,
 }: MeasurementProps<ReactionTrialId, ReactionMeasurement>) {
+  const styles = useActivityStyles();
   const [trial, setTrial] = useState<ReactionTrialId>(trials[0].id);
   const [status, setStatus] = useState<"idle" | "waiting" | "ready">("idle");
   const [message, setMessage] = useState("Press Start Round when you are ready.");
@@ -1172,6 +1207,7 @@ function BreathingRecorder({
   setMeasurements,
   setRecorderBusy,
 }: MeasurementProps<BreathingTrialId, BreathingMeasurement>) {
+  const styles = useActivityStyles();
   const breathingTrials = trials as readonly BreathingTrial[];
   const [trial, setTrial] = useState<BreathingTrialId>(breathingTrials[0].id);
   const [running, setRunning] = useState(false);
@@ -1263,7 +1299,7 @@ function BreathingRecorder({
       <UploadEvidenceRow />
 
       <View style={[styles.card, styles.timerCard]}>
-        <View style={[styles.breathCircle, getBreathCircleStyle(phase.label)]}>
+        <View style={[styles.breathCircle, getBreathCircleStyle(phase.label, styles)]}>
           <Text style={styles.breathPhase}>{phase.label}</Text>
           <Text style={styles.breathCountdown}>{phase.remaining}s</Text>
         </View>
@@ -1340,7 +1376,10 @@ function breathsPerMinute(breaths: number, elapsedMs: number) {
   return Math.round((breaths * 60000) / elapsedMs);
 }
 
-function getBreathCircleStyle(label: BreathPhase["label"]) {
+function getBreathCircleStyle(
+  label: BreathPhase["label"],
+  styles: ReturnType<typeof useActivityStyles>,
+) {
   if (label === "Inhale") return styles.breathCircleInhale;
   if (label === "Exhale") return styles.breathCircleExhale;
   return styles.breathCircleHold;
@@ -1367,6 +1406,7 @@ function pad(n: number) {
 }
 
 function Bullet({ children }: { children: string }) {
+  const styles = useActivityStyles();
   return (
     <View style={styles.listItem}>
       <Text style={styles.listMarker}>•</Text>
@@ -1376,6 +1416,7 @@ function Bullet({ children }: { children: string }) {
 }
 
 function Numbered({ n, children }: { n: number; children: string }) {
+  const styles = useActivityStyles();
   return (
     <View style={styles.listItem}>
       <Text style={styles.listMarker}>{n}.</Text>
@@ -1384,8 +1425,9 @@ function Numbered({ n, children }: { n: number; children: string }) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
+const makeStyles = (c: Palette, ACCENT: Accent) =>
+  StyleSheet.create({
+  safe: { flex: 1, backgroundColor: c.bg },
   flex: { flex: 1 },
   header: {
     flexDirection: "row",
@@ -1395,8 +1437,8 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   backBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
-  backArrow: { color: COLORS.primary, fontSize: 34, fontWeight: "700", lineHeight: 36 },
-  title: { color: COLORS.primary, fontSize: 22, fontWeight: "800", marginLeft: 8, flex: 1 },
+  backArrow: { color: c.primary, fontSize: 34, fontWeight: "700", lineHeight: 36 },
+  title: { color: c.primary, fontSize: 22, fontWeight: "800", marginLeft: 8, flex: 1 },
   stepHeader: { paddingHorizontal: 16, paddingBottom: 4 },
   progressTrack: { flexDirection: "row", gap: 6 },
   progressSeg: {
@@ -1405,29 +1447,29 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: ACCENT.tabActive,
   },
-  progressSegActive: { backgroundColor: COLORS.primary },
-  stepCount: { color: COLORS.muted, fontSize: 13, fontWeight: "600", marginTop: 10 },
-  stepName: { color: COLORS.primary, fontSize: 20, fontWeight: "800", marginTop: 2 },
+  progressSegActive: { backgroundColor: c.primary },
+  stepCount: { color: c.muted, fontSize: 13, fontWeight: "600", marginTop: 10 },
+  stepName: { color: c.primary, fontSize: 20, fontWeight: "800", marginTop: 2 },
   scrollContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 },
   card: {
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     borderRadius: 16,
     padding: 20,
     boxShadow: "0px 1px 6px rgba(0, 0, 0, 0.05)",
   },
   blockTitle: {
-    color: COLORS.inputText,
+    color: c.inputText,
     fontSize: 18,
     fontWeight: "800",
     marginTop: 18,
     marginBottom: 6,
   },
-  body: { color: COLORS.inputText, fontSize: 16, lineHeight: 25 },
+  body: { color: c.inputText, fontSize: 16, lineHeight: 25 },
   listItem: { flexDirection: "row", marginTop: 7, paddingRight: 8 },
-  listMarker: { color: COLORS.inputText, fontSize: 16, lineHeight: 24, width: 26, paddingLeft: 4 },
-  listText: { color: COLORS.inputText, fontSize: 16, lineHeight: 24, flex: 1 },
-  promptTitle: { color: COLORS.inputText, fontSize: 17, fontWeight: "700", marginBottom: 14 },
-  predictLead: { color: COLORS.inputText, fontSize: 16, lineHeight: 24, marginBottom: 10 },
+  listMarker: { color: c.inputText, fontSize: 16, lineHeight: 24, width: 26, paddingLeft: 4 },
+  listText: { color: c.inputText, fontSize: 16, lineHeight: 24, flex: 1 },
+  promptTitle: { color: c.inputText, fontSize: 17, fontWeight: "700", marginBottom: 14 },
+  predictLead: { color: c.inputText, fontSize: 16, lineHeight: 24, marginBottom: 10 },
   choiceRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 14 },
   choiceChip: {
     paddingVertical: 10,
@@ -1435,11 +1477,11 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     borderColor: ACCENT.border,
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
   },
-  choiceChipActive: { backgroundColor: ACCENT.tabActive, borderColor: COLORS.primary },
-  choiceChipText: { color: COLORS.inputText, fontSize: 15, fontWeight: "600" },
-  choiceChipTextActive: { color: COLORS.primary, fontWeight: "700" },
+  choiceChipActive: { backgroundColor: ACCENT.tabActive, borderColor: c.primary },
+  choiceChipText: { color: c.inputText, fontSize: 15, fontWeight: "600" },
+  choiceChipTextActive: { color: c.primary, fontWeight: "700" },
   spacedTop: { marginTop: 24 },
   textArea: {
     borderWidth: 1,
@@ -1447,13 +1489,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     minHeight: 150,
     padding: 16,
-    color: COLORS.inputText,
+    color: c.inputText,
     fontSize: 16,
     lineHeight: 23,
   },
   subTabBar: {
     flexDirection: "row",
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     borderRadius: 999,
     padding: 4,
     marginBottom: 20,
@@ -1467,18 +1509,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   subTabActive: { backgroundColor: ACCENT.tabActive },
-  subTabLabel: { color: COLORS.inputText, fontSize: 13, fontWeight: "600" },
-  subTabLabelActive: { color: COLORS.primary, fontWeight: "700" },
+  subTabLabel: { color: c.inputText, fontSize: 13, fontWeight: "600" },
+  subTabLabelActive: { color: c.primary, fontWeight: "700" },
   instructionBox: {
     backgroundColor: ACCENT.softHeader,
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
   },
-  instructionTitle: { color: COLORS.primary, fontSize: 15, fontWeight: "800", marginBottom: 4 },
-  instructionText: { color: COLORS.inputText, fontSize: 14, lineHeight: 20 },
+  instructionTitle: { color: c.primary, fontSize: 15, fontWeight: "800", marginBottom: 4 },
+  instructionText: { color: c.inputText, fontSize: 14, lineHeight: 20 },
   switchHint: {
-    color: COLORS.primary,
+    color: c.primary,
     fontSize: 14,
     fontWeight: "600",
     textAlign: "center",
@@ -1489,7 +1531,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     borderWidth: 1,
     borderColor: ACCENT.border,
     borderRadius: 12,
@@ -1497,20 +1539,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 20,
   },
-  uploadRowText: { color: COLORS.primary, fontSize: 15, fontWeight: "600" },
+  uploadRowText: { color: c.primary, fontSize: 15, fontWeight: "600" },
   timerCard: { marginTop: 20, alignItems: "center", gap: 16 },
-  timer: { color: COLORS.inputText, fontSize: 56, fontWeight: "800", marginBottom: 4 },
+  timer: { color: c.inputText, fontSize: 56, fontWeight: "800", marginBottom: 4 },
   primaryBtn: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: c.primary,
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 36,
     alignItems: "center",
     alignSelf: "center",
   },
-  primaryBtnText: { color: COLORS.white, fontSize: 17, fontWeight: "700" },
+  primaryBtnText: { color: c.white, fontSize: 17, fontWeight: "700" },
   outlineBtn: {
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     borderWidth: 1,
     borderColor: ACCENT.border,
     borderRadius: 12,
@@ -1519,20 +1561,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     alignSelf: "center",
   },
-  outlineBtnText: { color: COLORS.inputText, fontSize: 17, fontWeight: "700" },
+  outlineBtnText: { color: c.inputText, fontSize: 17, fontWeight: "700" },
   disabledBtn: { opacity: 0.55 },
   stack: { gap: 16 },
   actionCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     borderRadius: 16,
     padding: 20,
     boxShadow: "0px 1px 6px rgba(0, 0, 0, 0.05)",
   },
-  actionTitle: { color: COLORS.primary, fontSize: 18, fontWeight: "800" },
-  actionNote: { color: COLORS.muted, fontSize: 14, marginTop: 4, lineHeight: 20 },
+  actionTitle: { color: c.primary, fontSize: 18, fontWeight: "800" },
+  actionNote: { color: c.muted, fontSize: 14, marginTop: 4, lineHeight: 20 },
   field: { marginTop: 16 },
   fieldLabel: {
-    color: COLORS.inputText,
+    color: c.inputText,
     fontSize: 15,
     fontWeight: "600",
     marginBottom: 8,
@@ -1544,12 +1586,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     minHeight: 52,
     padding: 14,
-    color: COLORS.inputText,
+    color: c.inputText,
     fontSize: 16,
     lineHeight: 22,
   },
-  fieldHint: { color: COLORS.muted, fontSize: 13, fontStyle: "italic", marginTop: 6 },
-  sectionHeading: { color: COLORS.primary, fontSize: 23, fontWeight: "800", marginBottom: 18 },
+  fieldHint: { color: c.muted, fontSize: 13, fontStyle: "italic", marginTop: 6 },
+  sectionHeading: { color: c.primary, fontSize: 23, fontWeight: "800", marginBottom: 18 },
   forceTable: { borderWidth: 1, borderColor: ACCENT.border, borderRadius: 8, overflow: "hidden" },
   forceRow: {
     flexDirection: "row",
@@ -1558,10 +1600,10 @@ const styles = StyleSheet.create({
   },
   forceRowLast: { borderBottomWidth: 0 },
   forceHeaderRow: { backgroundColor: ACCENT.softHeader },
-  forceCell: { flex: 1, padding: 12, color: COLORS.inputText, fontSize: 14, lineHeight: 20 },
+  forceCell: { flex: 1, padding: 12, color: c.inputText, fontSize: 14, lineHeight: 20 },
   forceHeaderText: { fontWeight: "800" },
-  formulaCentered: { color: COLORS.inputText, fontSize: 17, textAlign: "center", paddingVertical: 6 },
-  reactionMeta: { color: COLORS.primary, fontSize: 15, fontWeight: "800" },
+  formulaCentered: { color: c.inputText, fontSize: 17, textAlign: "center", paddingVertical: 6 },
+  reactionMeta: { color: c.primary, fontSize: 15, fontWeight: "800" },
   reactionBoard: {
     width: 216,
     height: 216,
@@ -1576,15 +1618,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: ACCENT.border,
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     alignItems: "center",
     justifyContent: "center",
   },
-  reactionWaiting: { backgroundColor: "#F3F4F8" },
-  reactionReady: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  reactionCellText: { color: COLORS.inputText, fontSize: 16, fontWeight: "900" },
-  reactionCellTextReady: { color: COLORS.white },
-  resultLine: { color: COLORS.inputText, fontSize: 15, fontWeight: "600", textAlign: "center" },
+  reactionWaiting: { backgroundColor: ACCENT.softHeader },
+  reactionReady: { backgroundColor: c.primary, borderColor: c.primary },
+  reactionCellText: { color: c.inputText, fontSize: 16, fontWeight: "900" },
+  reactionCellTextReady: { color: c.white },
+  resultLine: { color: c.inputText, fontSize: 15, fontWeight: "600", textAlign: "center" },
   counterRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 14 },
   counterBtn: {
     width: 48,
@@ -1592,18 +1634,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: ACCENT.border,
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     alignItems: "center",
     justifyContent: "center",
   },
-  counterBtnText: { color: COLORS.primary, fontSize: 28, fontWeight: "900", lineHeight: 32 },
+  counterBtnText: { color: c.primary, fontSize: 28, fontWeight: "900", lineHeight: 32 },
   counterReadout: { minWidth: 92, alignItems: "center" },
-  counterNumber: { color: COLORS.inputText, fontSize: 32, fontWeight: "900" },
-  counterLabel: { color: COLORS.muted, fontSize: 13, fontWeight: "700", marginTop: 2 },
+  counterNumber: { color: c.inputText, fontSize: 32, fontWeight: "900" },
+  counterLabel: { color: c.muted, fontSize: 13, fontWeight: "700", marginTop: 2 },
   breathCircle: {
     borderRadius: 999,
     borderWidth: 2,
-    borderColor: COLORS.primary,
+    borderColor: c.primary,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: ACCENT.softHeader,
@@ -1611,8 +1653,8 @@ const styles = StyleSheet.create({
   breathCircleInhale: { width: 154, height: 154 },
   breathCircleHold: { width: 128, height: 128 },
   breathCircleExhale: { width: 96, height: 96 },
-  breathPhase: { color: COLORS.primary, fontSize: 22, fontWeight: "900" },
-  breathCountdown: { color: COLORS.inputText, fontSize: 18, fontWeight: "800", marginTop: 4 },
+  breathPhase: { color: c.primary, fontSize: 22, fontWeight: "900" },
+  breathCountdown: { color: c.inputText, fontSize: 18, fontWeight: "800", marginTop: 4 },
   footer: {
     flexDirection: "row",
     gap: 12,
@@ -1621,24 +1663,24 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: ACCENT.border,
-    backgroundColor: COLORS.bg,
+    backgroundColor: c.bg,
   },
   footerSpacer: { flex: 1 },
   footerBack: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     borderWidth: 1,
     borderColor: ACCENT.border,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: "center",
   },
-  footerBackText: { color: COLORS.primary, fontSize: 17, fontWeight: "700" },
+  footerBackText: { color: c.primary, fontSize: 17, fontWeight: "700" },
   footerNext: {
     flex: 1,
-    backgroundColor: COLORS.primary,
+    backgroundColor: c.primary,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: "center",
   },
-});
+  });

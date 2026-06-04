@@ -1,7 +1,7 @@
 import React from "react";
 import { View, ViewStyle, StyleSheet, StyleProp, Text, NativeModules } from "react-native";
 
-import { COLORS } from "./auth-shell";
+import { Palette, useThemedStyles } from "@/lib/theme";
 
 // Check if the native Google Mobile Ads module is present in the current native binary
 const hasAdsModule = !!NativeModules.RNGoogleMobileAdsModule || !!NativeModules.RNGoogleMobileAdsInitProvider;
@@ -27,6 +27,7 @@ interface AdBannerProps {
 }
 
 function AdBanner({ style }: AdBannerProps) {
+  const styles = useThemedStyles(makeStyles);
   if (hasAdsModule && BannerAd && TestIds && BannerAdSize) {
     return (
       <View style={[styles.container, style]}>
@@ -53,47 +54,48 @@ function AdBanner({ style }: AdBannerProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    alignItems: "center",
-    width: "100%",
-  },
-  mockContainer: {
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    borderWidth: 1.5,
-    borderColor: "rgba(7, 76, 92, 0.08)",
-    boxShadow: "0px 4px 12px rgba(7, 76, 92, 0.04)",
-  },
-  mockBadge: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: COLORS.primary,
-    backgroundColor: "rgba(7, 76, 92, 0.1)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    overflow: "hidden",
-  },
-  mockContent: {
-    flex: 1,
-  },
-  mockTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: COLORS.primary,
-  },
-  mockSubtext: {
-    fontSize: 11,
-    color: COLORS.muted,
-    marginTop: 2,
-    fontWeight: "500",
-  },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    container: {
+      alignItems: "center",
+      width: "100%",
+    },
+    mockContainer: {
+      backgroundColor: c.white,
+      borderRadius: 16,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      borderWidth: 1.5,
+      borderColor: "rgba(7, 76, 92, 0.08)",
+      boxShadow: "0px 4px 12px rgba(7, 76, 92, 0.04)",
+    },
+    mockBadge: {
+      fontSize: 10,
+      fontWeight: "800",
+      color: c.primary,
+      backgroundColor: "rgba(7, 76, 92, 0.1)",
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 6,
+      overflow: "hidden",
+    },
+    mockContent: {
+      flex: 1,
+    },
+    mockTitle: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: c.primary,
+    },
+    mockSubtext: {
+      fontSize: 11,
+      color: c.muted,
+      marginTop: 2,
+      fontWeight: "500",
+    },
+  });
 
 export default AdBanner;

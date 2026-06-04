@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { COLORS } from "@/components/auth-shell";
+import { Palette, useThemedStyles } from "@/lib/theme";
 
 const PILLARS = [
   { 
@@ -53,6 +53,7 @@ const PILLARS = [
 ];
 
 export default function AboutScreen() {
+  const styles = useThemedStyles(makeStyles);
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
@@ -112,10 +113,11 @@ export default function AboutScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+  safe: { flex: 1, backgroundColor: c.bg },
   header: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: c.primary,
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 28,
@@ -123,26 +125,26 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 32,
     boxShadow: "0px 6px 16px rgba(7, 76, 92, 0.15)",
   },
-  logo: { color: COLORS.white, fontSize: 36, fontWeight: "900", letterSpacing: -1 },
+  logo: { color: c.white, fontSize: 36, fontWeight: "900", letterSpacing: -1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32 },
   pageTitle: {
-    color: COLORS.primary,
+    color: c.primary,
     fontSize: 28,
     fontWeight: "800",
     textAlign: "center",
     marginBottom: 20,
   },
   card: {
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
     borderColor: "rgba(0, 0, 0, 0.03)",
     boxShadow: "0px 6px 20px rgba(0, 0, 0, 0.04)",
   },
-  body: { color: COLORS.inputText, fontSize: 15, lineHeight: 24, fontWeight: "500" },
+  body: { color: c.inputText, fontSize: 15, lineHeight: 24, fontWeight: "500" },
   sectionTitle: {
-    color: COLORS.primary,
+    color: c.primary,
     fontSize: 18,
     fontWeight: "800",
     marginTop: 28,
@@ -177,14 +179,14 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: COLORS.primary,
+    backgroundColor: c.primary,
     alignItems: "center",
     justifyContent: "center",
     boxShadow: "0px 3px 8px rgba(7, 76, 92, 0.2)",
   },
-  stepNumber: { color: COLORS.white, fontSize: 14, fontWeight: "800" },
-  stepText: { color: COLORS.inputText, fontSize: 15, lineHeight: 21, flex: 1, fontWeight: "500" },
+  stepNumber: { color: c.white, fontSize: 14, fontWeight: "800" },
+  stepText: { color: c.inputText, fontSize: 15, lineHeight: 21, flex: 1, fontWeight: "500" },
   versionBox: { alignItems: "center", marginTop: 36, paddingBottom: 8 },
-  versionLabel: { color: COLORS.primary, fontSize: 18, fontWeight: "800" },
-  versionValue: { color: COLORS.muted, fontSize: 13, marginTop: 4, fontWeight: "600" },
-});
+  versionLabel: { color: c.primary, fontSize: 18, fontWeight: "800" },
+  versionValue: { color: c.muted, fontSize: 13, marginTop: 4, fontWeight: "600" },
+  });

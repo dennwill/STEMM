@@ -8,11 +8,11 @@ import { sendEmailVerification } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 
 import AdBanner from "@/components/ad-banner";
-import { COLORS } from "@/components/auth-shell";
 import { AnimatedProgressBar } from "@/components/animated-progress-bar";
 import { PressableScale } from "@/components/pressable-scale";
 import { auth, firestore, trackEvent } from "@/lib/firebase";
 import { registerForPushNotifications, scheduleActivityReminder } from "@/lib/notifications";
+import { Palette, useTheme, useThemedStyles } from "@/lib/theme";
 
 type ActivityIcon =
   | { lib: "mc"; name: keyof typeof MaterialCommunityIcons.glyphMap }
@@ -37,64 +37,6 @@ const HEALTH: Activity[] = [
   { id: "breathing", title: "Breathing Pace Trainer", icon: { lib: "mc", name: "face-man-profile" } },
 ];
 
-type ActivityTheme = {
-  bg: string;
-  accent: string;
-  iconBg: string;
-  textColor: string;
-};
-
-const ACTIVITY_THEMES: Record<string, ActivityTheme> = {
-  parachute: {
-    bg: "#F0F9FF",       // Sky 50
-    accent: "#0284C7",   // Sky 600
-    iconBg: "#E0F2FE",   // Sky 100
-    textColor: "#0369A1" // Sky 700
-  },
-  sound: {
-    bg: "#FAF5FF",       // Purple 50
-    accent: "#8B5CF6",   // Purple 500
-    iconBg: "#F3E8FF",   // Purple 100
-    textColor: "#6D28D9" // Purple 700
-  },
-  fan: {
-    bg: "#FFFBEB",       // Amber 50
-    accent: "#D97706",   // Amber 600
-    iconBg: "#FEF3C7",   // Amber 100
-    textColor: "#B45309" // Amber 700
-  },
-  earthquake: {
-    bg: "#FFF1F2",       // Rose 50
-    accent: "#E11D48",   // Rose 600
-    iconBg: "#FFE4E6",   // Rose 100
-    textColor: "#BE123C" // Rose 700
-  },
-  performance: {
-    bg: "#ECFDF5",       // Emerald 50
-    accent: "#10B981",   // Emerald 500
-    iconBg: "#D1FAE5",   // Emerald 100
-    textColor: "#047857" // Emerald 700
-  },
-  reaction: {
-    bg: "#EEF2FF",       // Indigo 50
-    accent: "#6366F1",   // Indigo 500
-    iconBg: "#E0E7FF",   // Indigo 100
-    textColor: "#4338CA" // Indigo 700
-  },
-  breathing: {
-    bg: "#F0FDFA",       // Teal 50
-    accent: "#14B8A6",   // Teal 500
-    iconBg: "#CCFBF1",   // Teal 100
-    textColor: "#0F766E" // Teal 700
-  },
-  map: {
-    bg: "#EFF6FF",       // Blue 50
-    accent: "#3B82F6",   // Blue 500
-    iconBg: "#DBEAFE",   // Blue 100
-    textColor: "#1D4ED8" // Blue 700
-  }
-};
-
 function ActivityGlyph({ icon, size, color }: { icon: ActivityIcon; size: number; color: string }) {
   if (icon.lib === "ion") {
     return <Ionicons name={icon.name} size={size} color={color} />;
@@ -105,6 +47,8 @@ function ActivityGlyph({ icon, size, color }: { icon: ActivityIcon; size: number
 export default function DashboardScreen() {
   const router = useRouter();
   const user = auth.currentUser;
+  const { palette: c, activityThemes: ACTIVITY_THEMES } = useTheme();
+  const styles = useThemedStyles(makeStyles);
 
   const [userName, setUserName] = useState<string>("");
   const [teamName, setTeamName] = useState<string>("");
@@ -237,8 +181,8 @@ export default function DashboardScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor={COLORS.primary}
-            colors={[COLORS.primary]}
+            tintColor={c.primary}
+            colors={[c.primary]}
           />
         }
       >
@@ -377,10 +321,11 @@ export default function DashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+  safe: { flex: 1, backgroundColor: c.bg },
   header: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: c.primary,
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 28,
@@ -393,7 +338,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  logo: { color: COLORS.white, fontSize: 36, fontWeight: "900", letterSpacing: -1 },
+  logo: { color: c.white, fontSize: 36, fontWeight: "900", letterSpacing: -1 },
   avatarBtn: {
     padding: 2,
   },
@@ -405,10 +350,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: COLORS.white,
+    borderColor: c.white,
   },
   avatarInitials: {
-    color: COLORS.white,
+    color: c.white,
     fontSize: 16,
     fontWeight: "700",
   },
@@ -421,7 +366,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   userName: {
-    color: COLORS.white,
+    color: c.white,
     fontWeight: "800",
     fontSize: 20,
   },
@@ -463,7 +408,7 @@ const styles = StyleSheet.create({
   },
   verifyClose: { padding: 2 },
   metricsCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     borderRadius: 20,
     padding: 18,
     marginBottom: 24,
@@ -479,12 +424,12 @@ const styles = StyleSheet.create({
   metricsTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: COLORS.primary,
+    color: c.primary,
   },
   metricsBadge: {
     fontSize: 11,
     fontWeight: "700",
-    color: COLORS.primary,
+    color: c.primary,
     backgroundColor: "rgba(7, 76, 92, 0.1)",
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -493,7 +438,7 @@ const styles = StyleSheet.create({
   },
   metricsSub: {
     fontSize: 12,
-    color: COLORS.muted,
+    color: c.muted,
     marginTop: 4,
     marginBottom: 16,
   },
@@ -508,7 +453,7 @@ const styles = StyleSheet.create({
     color: "#0F766E",
   },
   sectionTitle: {
-    color: COLORS.primary,
+    color: c.primary,
     fontSize: 18,
     fontWeight: "800",
     marginBottom: 14,
@@ -597,9 +542,9 @@ const styles = StyleSheet.create({
   },
   listSubLabel: {
     fontSize: 12,
-    color: "rgba(0, 0, 0, 0.4)",
+    color: c.muted,
     marginTop: 2,
     fontWeight: "500",
   },
   adBanner: { marginTop: 12, marginBottom: 12 },
-});
+  });

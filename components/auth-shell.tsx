@@ -11,18 +11,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { PressableScale } from "@/components/pressable-scale";
+import { Palette, useThemedStyles } from "@/lib/theme";
 
-export const COLORS = {
-  bg: "#EEF0F8",
-  primary: "#074C5C",
-  input: "#C8C8C8",
-  inputText: "#3D3D3D",
-  muted: "#5A5A5A",
-  white: "#FFFFFF",
-  error: "#B91C1C",
-  errorBg: "#FEF2F2",
-  errorBorder: "#FECACA",
-};
+// Re-export the field-style hook so auth screens can import it from here.
+export { useFieldStyles } from "@/lib/theme";
 
 type Props = {
   children: ReactNode;
@@ -32,6 +24,7 @@ type Props = {
 
 export function AuthShell({ children, showLoginLink = true, onBack }: Props) {
   const router = useRouter();
+  const styles = useThemedStyles(makeStyles);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -85,6 +78,7 @@ export function PrimaryButton({
   onPress: () => void;
   disabled?: boolean;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <PressableScale
       onPress={onPress}
@@ -97,70 +91,48 @@ export function PrimaryButton({
 }
 
 export function FormHeading({ children }: { children: ReactNode }) {
+  const styles = useThemedStyles(makeStyles);
   return <Text style={styles.heading}>{children}</Text>;
 }
 
-export const fieldStyles = StyleSheet.create({
-  label: {
-    color: COLORS.primary,
-    fontSize: 15,
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: COLORS.input,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    color: COLORS.inputText,
-    fontSize: 16,
-  },
-  group: {
-    marginBottom: 14,
-  },
-  errorText: {
-    color: COLORS.error,
-    fontSize: 14,
-    marginBottom: 8,
-  },
-});
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
-  flex: { flex: 1 },
-  scrollContent: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 32 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: 16,
-    paddingBottom: 24,
-  },
-  backBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
-  backArrow: { color: COLORS.primary, fontSize: 28, fontWeight: "700", lineHeight: 32 },
-  logoWrap: { alignItems: "center", paddingTop: 24, paddingBottom: 24 },
-  logo: {
-    color: COLORS.primary,
-    fontSize: 56,
-    fontWeight: "900",
-    letterSpacing: -1,
-  },
-  body: { flex: 1 },
-  footer: { alignItems: "center", paddingTop: 24 },
-  footerText: { color: COLORS.muted, fontSize: 13 },
-  footerLink: { color: COLORS.primary, fontWeight: "600", textDecorationLine: "underline" },
-  heading: {
-    color: COLORS.primary,
-    fontSize: 17,
-    textAlign: "center",
-    paddingHorizontal: 16,
-    marginBottom: 24,
-  },
-  primaryBtn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  primaryBtnText: { color: COLORS.white, fontSize: 16, fontWeight: "700" },
-  btnDisabled: { opacity: 0.5 },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: c.bg },
+    flex: { flex: 1 },
+    scrollContent: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 32 },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingTop: 16,
+      paddingBottom: 24,
+    },
+    backBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+    backArrow: { color: c.primary, fontSize: 28, fontWeight: "700", lineHeight: 32 },
+    logoWrap: { alignItems: "center", paddingTop: 24, paddingBottom: 24 },
+    logo: {
+      color: c.primary,
+      fontSize: 56,
+      fontWeight: "900",
+      letterSpacing: -1,
+    },
+    body: { flex: 1 },
+    footer: { alignItems: "center", paddingTop: 24 },
+    footerText: { color: c.muted, fontSize: 13 },
+    footerLink: { color: c.primary, fontWeight: "600", textDecorationLine: "underline" },
+    heading: {
+      color: c.primary,
+      fontSize: 17,
+      textAlign: "center",
+      paddingHorizontal: 16,
+      marginBottom: 24,
+    },
+    primaryBtn: {
+      backgroundColor: c.primary,
+      borderRadius: 16,
+      paddingVertical: 16,
+      alignItems: "center",
+    },
+    primaryBtnText: { color: c.onPrimary, fontSize: 16, fontWeight: "700" },
+    btnDisabled: { opacity: 0.5 },
+  });

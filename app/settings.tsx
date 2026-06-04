@@ -13,8 +13,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { COLORS } from "@/components/auth-shell";
 import { cancelAllNotifications, registerForPushNotifications } from "@/lib/notifications";
+import { Palette, useTheme, useThemedStyles } from "@/lib/theme";
 
 type BatteryIconName =
   | "battery"
@@ -46,15 +46,17 @@ function getBatteryStateLabel(state: Battery.BatteryState): string {
   }
 }
 
-function getBatteryColor(level: number): string {
-  if (level < 0) return COLORS.muted;
-  if (level < 0.2) return COLORS.error;
+function getBatteryColor(level: number, c: Palette): string {
+  if (level < 0) return c.muted;
+  if (level < 0.2) return c.error;
   if (level < 0.5) return "#D97706";
   return "#16A34A";
 }
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { palette: c, isDark, setMode } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [batteryLevel, setBatteryLevel] = useState(-1);
   const [batteryState, setBatteryState] = useState(Battery.BatteryState.UNKNOWN);
   const [lowPowerMode, setLowPowerMode] = useState(false);
@@ -103,7 +105,7 @@ export default function SettingsScreen() {
 
   const pct = batteryLevel < 0 ? "—" : `${Math.round(batteryLevel * 100)}%`;
   const iconName = getBatteryIcon(batteryLevel, batteryState);
-  const iconColor = getBatteryColor(batteryLevel);
+  const iconColor = getBatteryColor(batteryLevel, c);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -132,8 +134,25 @@ export default function SettingsScreen() {
           <SettingsRow
             label="Low Power Mode"
             value={lowPowerMode ? "On" : "Off"}
-            valueColor={lowPowerMode ? "#D97706" : COLORS.muted}
+            valueColor={lowPowerMode ? "#D97706" : c.muted}
           />
+        </View>
+
+        {/* Appearance */}
+        <Text style={styles.sectionLabel}>Appearance</Text>
+        <View style={styles.card}>
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleInfo}>
+              <MaterialCommunityIcons name="weather-night" size={22} color={c.primary} />
+              <Text style={styles.toggleLabel}>Dark Mode</Text>
+            </View>
+            <Switch
+              value={isDark}
+              onValueChange={(value) => setMode(value ? "dark" : "light")}
+              trackColor={{ false: c.input, true: c.primary }}
+              thumbColor={c.white}
+            />
+          </View>
         </View>
 
         {/* Notifications */}
@@ -141,14 +160,14 @@ export default function SettingsScreen() {
         <View style={styles.card}>
           <View style={styles.toggleRow}>
             <View style={styles.toggleInfo}>
-              <MaterialCommunityIcons name="bell-outline" size={22} color={COLORS.primary} />
+              <MaterialCommunityIcons name="bell-outline" size={22} color={c.primary} />
               <Text style={styles.toggleLabel}>Push Notifications</Text>
             </View>
             <Switch
               value={notificationsEnabled}
               onValueChange={handleNotificationToggle}
-              trackColor={{ false: COLORS.input, true: COLORS.primary }}
-              thumbColor={COLORS.white}
+              trackColor={{ false: c.input, true: c.primary }}
+              thumbColor={c.white}
             />
           </View>
         </View>
@@ -173,6 +192,7 @@ function SettingsRow({
   value: string;
   valueColor?: string;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.settingsRow}>
       <Text style={styles.rowLabel}>{label}</Text>
@@ -183,63 +203,64 @@ function SettingsRow({
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-  },
-  backBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
-  backArrow: { color: COLORS.primary, fontSize: 34, fontWeight: "700", lineHeight: 36 },
-  title: { color: COLORS.primary, fontSize: 22, fontWeight: "800", marginLeft: 8, flex: 1 },
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: c.bg },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 12,
+    },
+    backBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
+    backArrow: { color: c.primary, fontSize: 34, fontWeight: "700", lineHeight: 36 },
+    title: { color: c.primary, fontSize: 22, fontWeight: "800", marginLeft: 8, flex: 1 },
 
-  scrollContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 32 },
+    scrollContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 32 },
 
-  sectionLabel: {
-    color: COLORS.muted,
-    fontSize: 13,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    marginTop: 20,
-    marginBottom: 8,
-    marginLeft: 4,
-  },
+    sectionLabel: {
+      color: c.muted,
+      fontSize: 13,
+      fontWeight: "700",
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+      marginTop: 20,
+      marginBottom: 8,
+      marginLeft: 4,
+    },
 
-  card: {
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    padding: 20,
-    boxShadow: "0px 1px 6px rgba(0, 0, 0, 0.05)",
-  },
+    card: {
+      backgroundColor: c.white,
+      borderRadius: 16,
+      padding: 20,
+      boxShadow: "0px 1px 6px rgba(0, 0, 0, 0.05)",
+    },
 
-  batteryHero: { alignItems: "center", paddingVertical: 12, gap: 8 },
-  batteryPct: { fontSize: 36, fontWeight: "800", fontVariant: ["tabular-nums"] },
+    batteryHero: { alignItems: "center", paddingVertical: 12, gap: 8 },
+    batteryPct: { fontSize: 36, fontWeight: "800", fontVariant: ["tabular-nums"] },
 
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: "#E2E2EC",
-    marginVertical: 16,
-  },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: c.input,
+      marginVertical: 16,
+    },
 
-  settingsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 10,
-  },
-  rowLabel: { color: COLORS.inputText, fontSize: 16, fontWeight: "600" },
-  rowValue: { color: COLORS.muted, fontSize: 16, fontWeight: "500" },
+    settingsRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: 10,
+    },
+    rowLabel: { color: c.inputText, fontSize: 16, fontWeight: "600" },
+    rowValue: { color: c.muted, fontSize: 16, fontWeight: "500" },
 
-  toggleRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 4,
-  },
-  toggleInfo: { flexDirection: "row", alignItems: "center", gap: 10 },
-  toggleLabel: { color: COLORS.inputText, fontSize: 16, fontWeight: "600" },
-});
+    toggleRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: 4,
+    },
+    toggleInfo: { flexDirection: "row", alignItems: "center", gap: 10 },
+    toggleLabel: { color: c.inputText, fontSize: 16, fontWeight: "600" },
+  });

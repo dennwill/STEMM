@@ -3,12 +3,15 @@ import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { AuthShell, COLORS, FormHeading, PrimaryButton, fieldStyles } from "@/components/auth-shell";
+import { AuthShell, FormHeading, PrimaryButton, useFieldStyles } from "@/components/auth-shell";
 import { friendlyError } from "@/lib/errors";
 import { auth, firestore } from "@/lib/firebase";
+import { Palette, useThemedStyles } from "@/lib/theme";
 
 export default function JoinTeamScreen() {
   const router = useRouter();
+  const styles = useThemedStyles(makeStyles);
+  const fieldStyles = useFieldStyles();
 
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -79,15 +82,16 @@ export default function JoinTeamScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  codeInput: {
-    fontSize: 28,
-    fontWeight: "700",
-    letterSpacing: 8,
-    textAlign: "center",
-    paddingVertical: 18,
-    marginBottom: 16,
-  },
-  actions: { marginTop: 8, gap: 14 },
-  cancelLink: { textAlign: "center", color: COLORS.muted, fontSize: 13 },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    codeInput: {
+      fontSize: 28,
+      fontWeight: "700",
+      letterSpacing: 8,
+      textAlign: "center",
+      paddingVertical: 18,
+      marginBottom: 16,
+    },
+    actions: { marginTop: 8, gap: 14 },
+    cancelLink: { textAlign: "center", color: c.muted, fontSize: 13 },
+  });

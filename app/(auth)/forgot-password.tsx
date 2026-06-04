@@ -3,12 +3,15 @@ import { sendPasswordResetEmail } from "firebase/auth";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { AuthShell, COLORS, FormHeading, PrimaryButton, fieldStyles } from "@/components/auth-shell";
+import { AuthShell, FormHeading, PrimaryButton, useFieldStyles } from "@/components/auth-shell";
 import { friendlyError } from "@/lib/errors";
 import { auth, trackEvent } from "@/lib/firebase";
+import { Palette, useThemedStyles } from "@/lib/theme";
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  const styles = useThemedStyles(makeStyles);
+  const fieldStyles = useFieldStyles();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -100,15 +103,16 @@ export default function ForgotPasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  actions: { marginTop: 8, gap: 14 },
-  altLink: { textAlign: "center", color: COLORS.muted, fontSize: 13 },
-  altLinkAccent: { color: COLORS.primary, fontWeight: "600", textDecorationLine: "underline" },
-  successText: {
-    color: COLORS.muted,
-    fontSize: 15,
-    lineHeight: 22,
-    textAlign: "center",
-    marginBottom: 24,
-  },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    actions: { marginTop: 8, gap: 14 },
+    altLink: { textAlign: "center", color: c.muted, fontSize: 13 },
+    altLinkAccent: { color: c.primary, fontWeight: "600", textDecorationLine: "underline" },
+    successText: {
+      color: c.muted,
+      fontSize: 15,
+      lineHeight: 22,
+      textAlign: "center",
+      marginBottom: 24,
+    },
+  });

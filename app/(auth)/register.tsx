@@ -4,12 +4,13 @@ import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useState } from "react";
 import { Text, TextInput, View } from "react-native";
 
-import { AuthShell, FormHeading, PrimaryButton, fieldStyles } from "@/components/auth-shell";
+import { AuthShell, FormHeading, PrimaryButton, useFieldStyles } from "@/components/auth-shell";
 import { friendlyError } from "@/lib/errors";
 import { auth, firestore, trackEvent } from "@/lib/firebase";
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const fieldStyles = useFieldStyles();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");

@@ -8,9 +8,9 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 
-import { COLORS } from "@/components/auth-shell";
 import { PressableScale } from "@/components/pressable-scale";
 import { SPRINGS } from "@/constants/motion";
+import { Palette, useTheme, useThemedStyles } from "@/lib/theme";
 
 export type NavTab = "leaderboard" | "dashboard" | "team";
 
@@ -28,6 +28,8 @@ function NavItem({
   inactiveIcon: keyof typeof Ionicons.glyphMap;
   label: string;
 }) {
+  const { palette: c } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const scale = useSharedValue(active ? 1.15 : 1);
 
   useEffect(() => {
@@ -44,7 +46,7 @@ function NavItem({
         <Ionicons
           name={active ? activeIcon : inactiveIcon}
           size={26}
-          color={active ? COLORS.primary : COLORS.muted}
+          color={active ? c.primary : c.muted}
         />
       </Animated.View>
       <Text style={[styles.sideLabel, active && styles.activeLabel]}>{label}</Text>
@@ -53,6 +55,8 @@ function NavItem({
 }
 
 export function BottomNav({ state, navigation, insets }: BottomTabBarProps) {
+  const { palette: c } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const active = state.routes[state.index]?.name as NavTab;
 
   const go = (tab: NavTab) => {
@@ -101,7 +105,7 @@ export function BottomNav({ state, navigation, insets }: BottomTabBarProps) {
             <Ionicons
               name="grid-outline"
               size={26}
-              color={dashActive ? COLORS.primary : COLORS.muted}
+              color={dashActive ? c.primary : c.muted}
             />
           </Animated.View>
           <Text style={[styles.centerLabel, dashActive && styles.activeLabel]}>Dashboard</Text>
@@ -111,45 +115,46 @@ export function BottomNav({ state, navigation, insets }: BottomTabBarProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    backgroundColor: COLORS.white,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: COLORS.input,
-  },
-  bar: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    paddingTop: 10,
-    paddingBottom: 8,
-    paddingHorizontal: 16,
-  },
-  sideItem: { alignItems: "center", gap: 4, width: 96, paddingTop: 6 },
-  sideLabel: { fontSize: 12, color: COLORS.muted },
-  activeLabel: { color: COLORS.primary, fontWeight: "700" },
-  centerSlot: { width: 96 },
-  centerButton: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: -28,
-    alignItems: "center",
-  },
-  centerPressable: { alignItems: "center", gap: 4 },
-  centerCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: COLORS.white,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.input,
-    // boxShadow clips to borderRadius (round shadow) on every platform,
-    // unlike legacy elevation which can render a square shadow on Android.
-    boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.15)",
-  },
-  centerCircleActive: { borderWidth: 2, borderColor: COLORS.primary },
-  centerLabel: { fontSize: 12, color: COLORS.muted },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    wrap: {
+      backgroundColor: c.white,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: c.input,
+    },
+    bar: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      paddingTop: 10,
+      paddingBottom: 8,
+      paddingHorizontal: 16,
+    },
+    sideItem: { alignItems: "center", gap: 4, width: 96, paddingTop: 6 },
+    sideLabel: { fontSize: 12, color: c.muted },
+    activeLabel: { color: c.primary, fontWeight: "700" },
+    centerSlot: { width: 96 },
+    centerButton: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      top: -28,
+      alignItems: "center",
+    },
+    centerPressable: { alignItems: "center", gap: 4 },
+    centerCircle: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: c.white,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.input,
+      // boxShadow clips to borderRadius (round shadow) on every platform,
+      // unlike legacy elevation which can render a square shadow on Android.
+      boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.15)",
+    },
+    centerCircleActive: { borderWidth: 2, borderColor: c.primary },
+    centerLabel: { fontSize: 12, color: c.muted },
+  });

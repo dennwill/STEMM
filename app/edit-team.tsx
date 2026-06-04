@@ -3,9 +3,10 @@ import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { AuthShell, COLORS, FormHeading, PrimaryButton, fieldStyles } from "@/components/auth-shell";
+import { AuthShell, FormHeading, PrimaryButton, useFieldStyles } from "@/components/auth-shell";
 import { friendlyError } from "@/lib/errors";
 import { auth, firestore } from "@/lib/firebase";
+import { Palette, useThemedStyles, useTheme } from "@/lib/theme";
 
 const GRADE_LEVELS = [
   "Kindergarten",
@@ -26,6 +27,9 @@ const GRADE_LEVELS = [
 export default function EditTeamScreen() {
   const router = useRouter();
   const { teamId } = useLocalSearchParams<{ teamId?: string }>();
+  const { palette: c } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const fieldStyles = useFieldStyles();
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -95,7 +99,7 @@ export default function EditTeamScreen() {
 
       {loading ? (
         <View style={styles.loadingWrap}>
-          <ActivityIndicator color={COLORS.primary} size="large" />
+          <ActivityIndicator color={c.primary} size="large" />
         </View>
       ) : (
         <>
@@ -162,32 +166,33 @@ export default function EditTeamScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  loadingWrap: { paddingTop: 48, alignItems: "center" },
-  dropdownTrigger: {
-    backgroundColor: COLORS.input,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  dropdownValue: { color: COLORS.inputText, fontSize: 16 },
-  dropdownPlaceholder: { color: COLORS.muted, fontSize: 16 },
-  dropdownCaret: { color: COLORS.muted, fontSize: 16 },
-  dropdownList: {
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.input,
-    overflow: "hidden",
-    marginTop: 8,
-  },
-  dropdownItem: { paddingHorizontal: 16, paddingVertical: 12 },
-  dropdownItemSelected: { backgroundColor: COLORS.bg },
-  dropdownItemText: { color: COLORS.inputText, fontSize: 16 },
-  dropdownItemTextSelected: { color: COLORS.primary, fontWeight: "600" },
-  actions: { marginTop: 16, gap: 14 },
-  cancelLink: { textAlign: "center", color: COLORS.muted, fontSize: 13 },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    loadingWrap: { paddingTop: 48, alignItems: "center" },
+    dropdownTrigger: {
+      backgroundColor: c.input,
+      borderRadius: 16,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    dropdownValue: { color: c.inputText, fontSize: 16 },
+    dropdownPlaceholder: { color: c.muted, fontSize: 16 },
+    dropdownCaret: { color: c.muted, fontSize: 16 },
+    dropdownList: {
+      backgroundColor: c.white,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: c.input,
+      overflow: "hidden",
+      marginTop: 8,
+    },
+    dropdownItem: { paddingHorizontal: 16, paddingVertical: 12 },
+    dropdownItemSelected: { backgroundColor: c.bg },
+    dropdownItemText: { color: c.inputText, fontSize: 16 },
+    dropdownItemTextSelected: { color: c.primary, fontWeight: "600" },
+    actions: { marginTop: 16, gap: 14 },
+    cancelLink: { textAlign: "center", color: c.muted, fontSize: 13 },
+  });

@@ -22,19 +22,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { COLORS } from "@/components/auth-shell";
 import { createChallengeSession, createDataPoint } from "@/lib/crud";
 import { LOCAL_ACTIVITY_IDS, LOCAL_TEAM_ID } from "@/lib/db";
 import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
-
-// Lavender accents that match the activity mockups. Kept local since they're
-// specific to this screen and not part of the shared auth palette.
-const ACCENT = {
-  tabActive: "#DCDDF2",
-  tableHeader: "#C9CCEC",
-  softHeader: "#EFEDF8",
-  border: "#E2E2EC",
-};
+import { Palette, useTheme, useWizardStyles, WizardAccent } from "@/lib/theme";
 
 const TABS = ["Instructions", "Prediction", "Recorder", "Write-Up", "Discussion"] as const;
 
@@ -77,6 +68,7 @@ type TrialId = (typeof TRIALS)[number]["id"];
 export default function SoundScreen() {
   const router = useRouter();
   const db = useSQLiteContext();
+  const styles = useWizardStyles(makeStyles);
   const [step, setStep] = useState(0);
 
   // Activity state lives here (not inside each step) so navigating between
@@ -204,6 +196,7 @@ export default function SoundScreen() {
 /* -------------------------------------------------------------------------- */
 
 function Instructions() {
+  const styles = useWizardStyles(makeStyles);
   return (
     <View style={styles.card}>
       <Text style={styles.blockTitle}>Overview</Text>
@@ -256,6 +249,8 @@ function Prediction({
   value: PredictionValue;
   onChange: (v: PredictionValue) => void;
 }) {
+  const { palette: c } = useTheme();
+  const styles = useWizardStyles(makeStyles);
   return (
     <View style={styles.card}>
       <Text style={styles.promptTitle}>Predict which action will create the loudest sound.</Text>
@@ -281,7 +276,7 @@ function Prediction({
       <TextInput
         style={styles.textArea}
         placeholder="I think dropping the book.."
-        placeholderTextColor={COLORS.muted}
+        placeholderTextColor={c.muted}
         value={value.reason}
         onChangeText={(reason) => onChange({ ...value, reason })}
         multiline
@@ -308,6 +303,8 @@ function meteringToDb(metering: number | undefined | null) {
 }
 
 function Recorder({ levels, setLevels }: LevelsProps) {
+  const { palette: c } = useTheme();
+  const styles = useWizardStyles(makeStyles);
   const meteringSupported = Platform.OS !== "web";
 
   const [trial, setTrial] = useState<TrialId>(TRIALS[0].id);
@@ -396,7 +393,7 @@ function Recorder({ levels, setLevels }: LevelsProps) {
       </View>
 
       <View style={[styles.card, styles.timerCard]}>
-        <Ionicons name="mic" size={40} color={COLORS.primary} style={styles.meterIcon} />
+        <Ionicons name="mic" size={40} color={c.primary} style={styles.meterIcon} />
         <Text style={styles.timer}>{display > 0 ? `${display} dB` : "—"}</Text>
         <Pressable
           style={[
@@ -460,6 +457,8 @@ type WriteUpProps = {
 };
 
 function WriteUp({ levels, answers, setAnswers, reflection, setReflection }: WriteUpProps) {
+  const { palette: c } = useTheme();
+  const styles = useWizardStyles(makeStyles);
   return (
     <View style={styles.stack}>
       {TRIALS.map((trial) => (
@@ -526,7 +525,7 @@ function WriteUp({ levels, answers, setAnswers, reflection, setReflection }: Wri
         <TextInput
           style={styles.textArea}
           placeholder="Type your reflection here.."
-          placeholderTextColor={COLORS.muted}
+          placeholderTextColor={c.muted}
           value={reflection}
           onChangeText={setReflection}
           multiline
@@ -581,6 +580,7 @@ const DB_LEVELS: { level: string; sounds: string; risk: string; tint?: string }[
 ];
 
 function Discussion() {
+  const styles = useWizardStyles(makeStyles);
   return (
     <View style={styles.card}>
       <Text style={styles.sectionHeading}>So why does this happen?</Text>
@@ -625,6 +625,7 @@ function Discussion() {
 /* -------------------------------------------------------------------------- */
 
 function Bullet({ children }: { children: string }) {
+  const styles = useWizardStyles(makeStyles);
   return (
     <View style={styles.listItem}>
       <Text style={styles.listMarker}>•</Text>
@@ -634,6 +635,7 @@ function Bullet({ children }: { children: string }) {
 }
 
 function Numbered({ n, children }: { n: number; children: string }) {
+  const styles = useWizardStyles(makeStyles);
   return (
     <View style={styles.listItem}>
       <Text style={styles.listMarker}>{n}.</Text>
@@ -646,8 +648,9 @@ function Numbered({ n, children }: { n: number; children: string }) {
 /* Styles                                                                     */
 /* -------------------------------------------------------------------------- */
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
+const makeStyles = (c: Palette, ACCENT: WizardAccent) =>
+  StyleSheet.create({
+  safe: { flex: 1, backgroundColor: c.bg },
   flex: { flex: 1 },
   header: {
     flexDirection: "row",
@@ -657,8 +660,8 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   backBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
-  backArrow: { color: COLORS.primary, fontSize: 34, fontWeight: "700", lineHeight: 36 },
-  title: { color: COLORS.primary, fontSize: 22, fontWeight: "800", marginLeft: 8 },
+  backArrow: { color: c.primary, fontSize: 34, fontWeight: "700", lineHeight: 36 },
+  title: { color: c.primary, fontSize: 22, fontWeight: "800", marginLeft: 8 },
 
   // Step wizard header
   stepHeader: { paddingHorizontal: 16, paddingBottom: 4 },
@@ -669,35 +672,35 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: ACCENT.tabActive,
   },
-  progressSegActive: { backgroundColor: COLORS.primary },
-  stepCount: { color: COLORS.muted, fontSize: 13, fontWeight: "600", marginTop: 10 },
-  stepName: { color: COLORS.primary, fontSize: 20, fontWeight: "800", marginTop: 2 },
+  progressSegActive: { backgroundColor: c.primary },
+  stepCount: { color: c.muted, fontSize: 13, fontWeight: "600", marginTop: 10 },
+  stepName: { color: c.primary, fontSize: 20, fontWeight: "800", marginTop: 2 },
 
   scrollContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 },
 
   card: {
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     borderRadius: 16,
     padding: 20,
     boxShadow: "0px 1px 6px rgba(0, 0, 0, 0.05)",
   },
 
   blockTitle: {
-    color: COLORS.inputText,
+    color: c.inputText,
     fontSize: 18,
     fontWeight: "800",
     marginTop: 18,
     marginBottom: 6,
   },
-  body: { color: COLORS.inputText, fontSize: 16, lineHeight: 25 },
+  body: { color: c.inputText, fontSize: 16, lineHeight: 25 },
 
   listItem: { flexDirection: "row", marginTop: 7, paddingRight: 8 },
-  listMarker: { color: COLORS.inputText, fontSize: 16, lineHeight: 24, width: 26, paddingLeft: 4 },
-  listText: { color: COLORS.inputText, fontSize: 16, lineHeight: 24, flex: 1 },
+  listMarker: { color: c.inputText, fontSize: 16, lineHeight: 24, width: 26, paddingLeft: 4 },
+  listText: { color: c.inputText, fontSize: 16, lineHeight: 24, flex: 1 },
 
   // Prediction
-  promptTitle: { color: COLORS.inputText, fontSize: 17, fontWeight: "700", marginBottom: 14 },
-  predictLead: { color: COLORS.inputText, fontSize: 16, lineHeight: 24, marginBottom: 10 },
+  promptTitle: { color: c.inputText, fontSize: 17, fontWeight: "700", marginBottom: 14 },
+  predictLead: { color: c.inputText, fontSize: 16, lineHeight: 24, marginBottom: 10 },
   choiceRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 14 },
   choiceChip: {
     paddingVertical: 10,
@@ -705,11 +708,11 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     borderColor: ACCENT.border,
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
   },
-  choiceChipActive: { backgroundColor: ACCENT.tabActive, borderColor: COLORS.primary },
-  choiceChipText: { color: COLORS.inputText, fontSize: 15, fontWeight: "600" },
-  choiceChipTextActive: { color: COLORS.primary, fontWeight: "700" },
+  choiceChipActive: { backgroundColor: ACCENT.tabActive, borderColor: c.primary },
+  choiceChipText: { color: c.inputText, fontSize: 15, fontWeight: "600" },
+  choiceChipTextActive: { color: c.primary, fontWeight: "700" },
   spacedTop: { marginTop: 24 },
   textArea: {
     borderWidth: 1,
@@ -717,7 +720,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     minHeight: 150,
     padding: 16,
-    color: COLORS.inputText,
+    color: c.inputText,
     fontSize: 16,
     lineHeight: 23,
   },
@@ -725,7 +728,7 @@ const styles = StyleSheet.create({
   // Recorder
   subTabBar: {
     flexDirection: "row",
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     borderRadius: 999,
     padding: 4,
     marginBottom: 20,
@@ -739,18 +742,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   subTabActive: { backgroundColor: ACCENT.tabActive },
-  subTabLabel: { color: COLORS.inputText, fontSize: 13, fontWeight: "600" },
-  subTabLabelActive: { color: COLORS.primary, fontWeight: "700" },
+  subTabLabel: { color: c.inputText, fontSize: 13, fontWeight: "600" },
+  subTabLabelActive: { color: c.primary, fontWeight: "700" },
   instructionBox: {
     backgroundColor: ACCENT.softHeader,
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
   },
-  instructionTitle: { color: COLORS.primary, fontSize: 15, fontWeight: "800", marginBottom: 4 },
-  instructionText: { color: COLORS.inputText, fontSize: 14, lineHeight: 20 },
+  instructionTitle: { color: c.primary, fontSize: 15, fontWeight: "800", marginBottom: 4 },
+  instructionText: { color: c.inputText, fontSize: 14, lineHeight: 20 },
   switchHint: {
-    color: COLORS.primary,
+    color: c.primary,
     fontSize: 14,
     fontWeight: "600",
     textAlign: "center",
@@ -759,20 +762,20 @@ const styles = StyleSheet.create({
   },
   timerCard: { marginTop: 20, alignItems: "center" },
   meterIcon: { marginBottom: 12 },
-  timer: { color: COLORS.inputText, fontSize: 56, fontWeight: "800", marginBottom: 20 },
-  meterCaption: { color: COLORS.muted, fontSize: 13, marginTop: 14, textAlign: "center" },
+  timer: { color: c.inputText, fontSize: 56, fontWeight: "800", marginBottom: 20 },
+  meterCaption: { color: c.muted, fontSize: 13, marginTop: 14, textAlign: "center" },
 
   primaryBtn: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: c.primary,
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 36,
     alignItems: "center",
     alignSelf: "center",
   },
-  primaryBtnText: { color: COLORS.white, fontSize: 17, fontWeight: "700" },
+  primaryBtnText: { color: c.white, fontSize: 17, fontWeight: "700" },
   outlineBtn: {
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     borderWidth: 1,
     borderColor: ACCENT.border,
     borderRadius: 12,
@@ -781,35 +784,35 @@ const styles = StyleSheet.create({
     alignItems: "center",
     alignSelf: "center",
   },
-  outlineBtnText: { color: COLORS.inputText, fontSize: 17, fontWeight: "700" },
+  outlineBtnText: { color: c.inputText, fontSize: 17, fontWeight: "700" },
   btnDisabled: { opacity: 0.5 },
 
   // Write-Up (stacked action cards)
   stack: { gap: 16 },
   actionCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     borderRadius: 16,
     padding: 20,
     boxShadow: "0px 1px 6px rgba(0, 0, 0, 0.05)",
   },
-  actionTitle: { color: COLORS.primary, fontSize: 18, fontWeight: "800" },
-  actionNote: { color: COLORS.muted, fontSize: 14, marginTop: 4, lineHeight: 20 },
+  actionTitle: { color: c.primary, fontSize: 18, fontWeight: "800" },
+  actionNote: { color: c.muted, fontSize: 14, marginTop: 4, lineHeight: 20 },
   field: { marginTop: 16 },
-  fieldLabel: { color: COLORS.inputText, fontSize: 15, fontWeight: "600", marginBottom: 8, lineHeight: 21 },
+  fieldLabel: { color: c.inputText, fontSize: 15, fontWeight: "600", marginBottom: 8, lineHeight: 21 },
   fieldInput: {
     borderWidth: 1,
     borderColor: ACCENT.border,
     borderRadius: 10,
     minHeight: 52,
     padding: 14,
-    color: COLORS.inputText,
+    color: c.inputText,
     fontSize: 16,
     lineHeight: 22,
   },
-  fieldHint: { color: COLORS.muted, fontSize: 13, fontStyle: "italic", marginTop: 6 },
+  fieldHint: { color: c.muted, fontSize: 13, fontStyle: "italic", marginTop: 6 },
 
   // Discussion
-  sectionHeading: { color: COLORS.primary, fontSize: 23, fontWeight: "800", marginBottom: 18 },
+  sectionHeading: { color: c.primary, fontSize: 23, fontWeight: "800", marginBottom: 18 },
   forceTable: { borderWidth: 1, borderColor: ACCENT.border, borderRadius: 8, overflow: "hidden" },
   forceRow: {
     flexDirection: "row",
@@ -818,9 +821,9 @@ const styles = StyleSheet.create({
   },
   forceRowLast: { borderBottomWidth: 0 },
   forceHeaderRow: { backgroundColor: ACCENT.softHeader },
-  forceCell: { flex: 1, padding: 14, color: COLORS.inputText, fontSize: 15, lineHeight: 21 },
+  forceCell: { flex: 1, padding: 14, color: c.inputText, fontSize: 15, lineHeight: 21 },
   forceHeaderText: { fontWeight: "800" },
-  formulaCentered: { color: COLORS.inputText, fontSize: 17, textAlign: "center", paddingVertical: 6 },
+  formulaCentered: { color: c.inputText, fontSize: 17, textAlign: "center", paddingVertical: 6 },
 
   // Wizard footer
   footer: {
@@ -831,24 +834,24 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: ACCENT.border,
-    backgroundColor: COLORS.bg,
+    backgroundColor: c.bg,
   },
   footerSpacer: { flex: 1 },
   footerBack: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     borderWidth: 1,
     borderColor: ACCENT.border,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: "center",
   },
-  footerBackText: { color: COLORS.primary, fontSize: 17, fontWeight: "700" },
+  footerBackText: { color: c.primary, fontSize: 17, fontWeight: "700" },
   footerNext: {
     flex: 1,
-    backgroundColor: COLORS.primary,
+    backgroundColor: c.primary,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: "center",
   },
-});
+  });

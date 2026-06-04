@@ -3,10 +3,11 @@ import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firest
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { AuthShell, COLORS, FormHeading, PrimaryButton, fieldStyles } from "@/components/auth-shell";
+import { AuthShell, FormHeading, PrimaryButton, useFieldStyles } from "@/components/auth-shell";
 import { generateDiscriminant } from "@/lib/discriminant";
 import { friendlyError } from "@/lib/errors";
 import { auth, firestore } from "@/lib/firebase";
+import { Palette, useThemedStyles } from "@/lib/theme";
 
 const GRADE_LEVELS = [
   "Kindergarten",
@@ -28,6 +29,8 @@ type Step = 1 | 2 | 3;
 
 export default function CreateTeamScreen() {
   const router = useRouter();
+  const styles = useThemedStyles(makeStyles);
+  const fieldStyles = useFieldStyles();
 
   const [step, setStep] = useState<Step>(1);
   const [submitting, setSubmitting] = useState(false);
@@ -186,41 +189,42 @@ export default function CreateTeamScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  dropdownTrigger: {
-    backgroundColor: COLORS.input,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  dropdownValue: { color: COLORS.inputText, fontSize: 16 },
-  dropdownPlaceholder: { color: COLORS.muted, fontSize: 16 },
-  dropdownCaret: { color: COLORS.muted, fontSize: 16 },
-  dropdownList: {
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.input,
-    overflow: "hidden",
-    marginBottom: 8,
-  },
-  dropdownItem: { paddingHorizontal: 16, paddingVertical: 12 },
-  dropdownItemSelected: { backgroundColor: COLORS.bg },
-  dropdownItemText: { color: COLORS.inputText, fontSize: 16 },
-  dropdownItemTextSelected: { color: COLORS.primary, fontWeight: "600" },
-  idIntro: { alignItems: "center", marginBottom: 16 },
-  idIntroText: { color: COLORS.primary, fontSize: 16, textAlign: "center" },
-  idIntroBold: { fontWeight: "700" },
-  idBox: {
-    backgroundColor: COLORS.input,
-    borderRadius: 16,
-    paddingVertical: 18,
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  idText: { color: COLORS.inputText, fontSize: 22, fontWeight: "700", letterSpacing: 4 },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    dropdownTrigger: {
+      backgroundColor: c.input,
+      borderRadius: 16,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 8,
+    },
+    dropdownValue: { color: c.inputText, fontSize: 16 },
+    dropdownPlaceholder: { color: c.muted, fontSize: 16 },
+    dropdownCaret: { color: c.muted, fontSize: 16 },
+    dropdownList: {
+      backgroundColor: c.white,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: c.input,
+      overflow: "hidden",
+      marginBottom: 8,
+    },
+    dropdownItem: { paddingHorizontal: 16, paddingVertical: 12 },
+    dropdownItemSelected: { backgroundColor: c.bg },
+    dropdownItemText: { color: c.inputText, fontSize: 16 },
+    dropdownItemTextSelected: { color: c.primary, fontWeight: "600" },
+    idIntro: { alignItems: "center", marginBottom: 16 },
+    idIntroText: { color: c.primary, fontSize: 16, textAlign: "center" },
+    idIntroBold: { fontWeight: "700" },
+    idBox: {
+      backgroundColor: c.input,
+      borderRadius: 16,
+      paddingVertical: 18,
+      alignItems: "center",
+      marginBottom: 16,
+    },
+    idText: { color: c.inputText, fontSize: 22, fontWeight: "700", letterSpacing: 4 },
+  });

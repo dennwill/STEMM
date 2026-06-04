@@ -3,12 +3,15 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { AuthShell, COLORS, FormHeading, PrimaryButton, fieldStyles } from "@/components/auth-shell";
+import { AuthShell, FormHeading, PrimaryButton, useFieldStyles } from "@/components/auth-shell";
 import { friendlyError } from "@/lib/errors";
 import { auth, trackEvent } from "@/lib/firebase";
+import { Palette, useThemedStyles } from "@/lib/theme";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const styles = useThemedStyles(makeStyles);
+  const fieldStyles = useFieldStyles();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -92,10 +95,11 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  actions: { marginTop: 8, gap: 14 },
-  forgotWrap: { alignSelf: "flex-end", marginTop: -4, marginBottom: 8 },
-  forgotLink: { color: COLORS.primary, fontSize: 13, fontWeight: "600" },
-  altLink: { textAlign: "center", color: COLORS.muted, fontSize: 13 },
-  altLinkAccent: { color: COLORS.primary, fontWeight: "600", textDecorationLine: "underline" },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    actions: { marginTop: 8, gap: 14 },
+    forgotWrap: { alignSelf: "flex-end", marginTop: -4, marginBottom: 8 },
+    forgotLink: { color: c.primary, fontSize: 13, fontWeight: "600" },
+    altLink: { textAlign: "center", color: c.muted, fontSize: 13 },
+    altLinkAccent: { color: c.primary, fontWeight: "600", textDecorationLine: "underline" },
+  });

@@ -5,8 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
-import { COLORS } from '@/components/auth-shell';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { AppThemeProvider, useTheme } from '@/lib/theme';
 import { registerBackgroundSync } from '@/lib/background-tasks';
 import { DATABASE_NAME, migrateDbIfNeeded } from '@/lib/db';
 import { registerForPushNotifications } from '@/lib/notifications';
@@ -16,8 +15,6 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
   useEffect(() => {
     // Parallel initialization: register background sync and notification permissions concurrently
     Promise.all([
@@ -26,20 +23,31 @@ export default function RootLayout() {
     ]).catch((err) => console.warn('Parallel init error:', err));
   }, []);
 
+  return (
+    <AppThemeProvider>
+      <SQLiteProvider databaseName={DATABASE_NAME} onInit={migrateDbIfNeeded}>
+        <RootLayoutNav />
+      </SQLiteProvider>
+    </AppThemeProvider>
+  );
+}
+
+function RootLayoutNav() {
+  const { isDark, palette } = useTheme();
+
   // Match the navigator background to the app background so screen swaps
   // never flash the navigator's default white card.
-  const base = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
-  const theme = { ...base, colors: { ...base.colors, background: COLORS.bg } };
+  const base = isDark ? DarkTheme : DefaultTheme;
+  const theme = { ...base, colors: { ...base.colors, background: palette.bg } };
 
   return (
-    <SQLiteProvider databaseName={DATABASE_NAME} onInit={migrateDbIfNeeded}>
-      <ThemeProvider value={theme}>
+    <ThemeProvider value={theme}>
         <Stack
           screenOptions={{
             headerShown: false,
             animation: 'fade',
             animationDuration: 200,
-            contentStyle: { backgroundColor: COLORS.bg },
+            contentStyle: { backgroundColor: palette.bg },
           }}
         >
           <Stack.Screen name="(auth)" />
@@ -59,8 +67,7 @@ export default function RootLayout() {
           <Stack.Screen name="privacy" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         </Stack>
-        <StatusBar style="auto" />
-      </ThemeProvider>
-    </SQLiteProvider>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+    </ThemeProvider>
   );
 }

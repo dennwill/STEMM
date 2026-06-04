@@ -21,11 +21,11 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { COLORS } from "@/components/auth-shell";
 import { PressableScale } from "@/components/pressable-scale";
 import { DURATIONS, SPRINGS } from "@/constants/motion";
 import { friendlyError } from "@/lib/errors";
 import { auth, firestore } from "@/lib/firebase";
+import { Palette, useTheme, useThemedStyles } from "@/lib/theme";
 
 const GRADE_LEVELS = [
   "Kindergarten",
@@ -62,6 +62,8 @@ function avatarFor(id: string): keyof typeof MaterialCommunityIcons.glyphMap {
 }
 
 function Avatar({ id, size, ring }: { id: string; size: number; ring?: boolean }) {
+  const { palette: c } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <View
       style={[
@@ -70,12 +72,13 @@ function Avatar({ id, size, ring }: { id: string; size: number; ring?: boolean }
         ring && styles.avatarRing,
       ]}
     >
-      <MaterialCommunityIcons name={avatarFor(id)} size={size * 0.62} color={COLORS.inputText} />
+      <MaterialCommunityIcons name={avatarFor(id)} size={size * 0.62} color={c.inputText} />
     </View>
   );
 }
 
 function YourTeamBadge() {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.badge}>
       <Text style={styles.badgeText}>YOUR TEAM</Text>
@@ -100,6 +103,7 @@ function PodiumSlot({
   lead?: boolean;
   mine?: boolean;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={[styles.podiumSlot, lead && styles.podiumLead]}>
       <Avatar id={team.id} size={lead ? 92 : 76} ring={mine} />
@@ -119,6 +123,7 @@ function PodiumSlot({
 }
 
 function DropdownCaret({ open }: { open: boolean }) {
+  const styles = useThemedStyles(makeStyles);
   const rotation = useSharedValue(0);
   useEffect(() => {
     rotation.value = withSpring(open ? 180 : 0, SPRINGS.bouncy);
@@ -134,6 +139,8 @@ function DropdownCaret({ open }: { open: boolean }) {
 export default function LeaderboardScreen() {
   const router = useRouter();
   const user = auth.currentUser;
+  const { palette: c } = useTheme();
+  const styles = useThemedStyles(makeStyles);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -206,7 +213,7 @@ export default function LeaderboardScreen() {
           hitSlop={12}
           style={[styles.refreshBtn, refreshing && styles.refreshBtnDisabled]}
         >
-          <MaterialCommunityIcons name="refresh" size={26} color={COLORS.white} />
+          <MaterialCommunityIcons name="refresh" size={26} color={c.white} />
         </PressableScale>
       </View>
 
@@ -217,8 +224,8 @@ export default function LeaderboardScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor={COLORS.primary}
-            colors={[COLORS.primary]}
+            tintColor={c.primary}
+            colors={[c.primary]}
           />
         }
       >
@@ -275,7 +282,7 @@ export default function LeaderboardScreen() {
 
         {loading ? (
           <View style={styles.stateWrap}>
-            <ActivityIndicator color={COLORS.primary} size="large" />
+            <ActivityIndicator color={c.primary} size="large" />
           </View>
         ) : error ? (
           <View style={styles.errorBox}>
@@ -334,10 +341,11 @@ export default function LeaderboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+  safe: { flex: 1, backgroundColor: c.bg },
   header: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: c.primary,
     paddingHorizontal: 24,
     paddingTop: 12,
     paddingBottom: 28,
@@ -347,19 +355,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  logo: { color: COLORS.white, fontSize: 34, fontWeight: "900", letterSpacing: -1 },
+  logo: { color: c.white, fontSize: 34, fontWeight: "900", letterSpacing: -1 },
   refreshBtn: { padding: 4 },
   refreshBtnDisabled: { opacity: 0.5 },
   scrollContent: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 24 },
   pageTitle: {
-    color: COLORS.primary,
+    color: c.primary,
     fontSize: 32,
     fontWeight: "800",
     textAlign: "center",
     marginBottom: 20,
   },
   dropdownTrigger: {
-    backgroundColor: COLORS.input,
+    backgroundColor: c.input,
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -367,32 +375,32 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  dropdownValue: { color: COLORS.inputText, fontSize: 16 },
-  dropdownPlaceholder: { color: COLORS.muted, fontSize: 16 },
-  dropdownCaret: { color: COLORS.muted, fontSize: 16 },
+  dropdownValue: { color: c.inputText, fontSize: 16 },
+  dropdownPlaceholder: { color: c.muted, fontSize: 16 },
+  dropdownCaret: { color: c.muted, fontSize: 16 },
   dropdownList: {
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.input,
+    borderColor: c.input,
     overflow: "hidden",
     marginTop: 8,
   },
   dropdownItem: { paddingHorizontal: 16, paddingVertical: 12 },
-  dropdownItemSelected: { backgroundColor: COLORS.bg },
-  dropdownItemText: { color: COLORS.inputText, fontSize: 16 },
-  dropdownItemTextSelected: { color: COLORS.primary, fontWeight: "600" },
+  dropdownItemSelected: { backgroundColor: c.bg },
+  dropdownItemText: { color: c.inputText, fontSize: 16 },
+  dropdownItemTextSelected: { color: c.primary, fontWeight: "600" },
   stateWrap: { paddingTop: 64, alignItems: "center" },
-  emptyText: { color: COLORS.muted, fontSize: 15 },
+  emptyText: { color: c.muted, fontSize: 15 },
   errorBox: {
-    backgroundColor: COLORS.errorBg,
-    borderColor: COLORS.errorBorder,
+    backgroundColor: c.errorBg,
+    borderColor: c.errorBorder,
     borderWidth: 1,
     borderRadius: 16,
     padding: 12,
     marginTop: 24,
   },
-  errorText: { color: COLORS.error, fontSize: 14 },
+  errorText: { color: c.error, fontSize: 14 },
   podium: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -405,14 +413,14 @@ const styles = StyleSheet.create({
   podiumLead: { paddingTop: 0 },
   podiumMedal: { marginTop: 4 },
   podiumName: {
-    color: COLORS.inputText,
+    color: c.inputText,
     fontSize: 13,
     fontWeight: "700",
     textAlign: "center",
   },
-  podiumScore: { color: COLORS.primary, fontSize: 13, fontWeight: "800", marginTop: 2 },
+  podiumScore: { color: c.primary, fontSize: 13, fontWeight: "800", marginTop: 2 },
   avatar: {
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -421,15 +429,15 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
-  avatarRing: { borderWidth: 3, borderColor: COLORS.primary },
+  avatarRing: { borderWidth: 3, borderColor: c.primary },
   badge: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: c.primary,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 999,
   },
   badgeText: {
-    color: COLORS.white,
+    color: c.white,
     fontSize: 9,
     fontWeight: "800",
     letterSpacing: 0.5,
@@ -438,7 +446,7 @@ const styles = StyleSheet.create({
   listRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     borderRadius: 14,
     paddingVertical: 16,
     paddingHorizontal: 18,
@@ -449,11 +457,11 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  listRowMine: { borderWidth: 2, borderColor: COLORS.primary },
+  listRowMine: { borderWidth: 2, borderColor: c.primary },
   listRank: { width: 22, alignItems: "center" },
-  listRankText: { color: COLORS.muted, fontSize: 15, fontWeight: "800" },
+  listRankText: { color: c.muted, fontSize: 15, fontWeight: "800" },
   listInfo: { flex: 1 },
   listNameRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
-  listName: { color: COLORS.inputText, fontSize: 16, fontWeight: "700" },
-  listScore: { color: COLORS.primary, fontSize: 13, fontWeight: "700", marginTop: 2 },
-});
+  listName: { color: c.inputText, fontSize: 16, fontWeight: "700" },
+  listScore: { color: c.primary, fontSize: 13, fontWeight: "700", marginTop: 2 },
+  });

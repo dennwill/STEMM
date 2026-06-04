@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { COLORS } from "@/components/auth-shell";
+import { Palette, useTheme, useThemedStyles } from "@/lib/theme";
 
 type LocationData = {
   latitude: number;
@@ -15,6 +15,8 @@ type LocationData = {
 
 export default function MapScreen() {
   const router = useRouter();
+  const { palette: c } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [location, setLocation] = useState<LocationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [permissionDenied, setPermissionDenied] = useState(false);
@@ -53,7 +55,7 @@ export default function MapScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="arrow-back" size={26} color={COLORS.white} />
+          <Ionicons name="arrow-back" size={26} color={c.white} />
         </Pressable>
         <Text style={styles.logo}>STEMM</Text>
         <View style={{ width: 26 }} />
@@ -61,12 +63,12 @@ export default function MapScreen() {
 
       {loading ? (
         <View style={styles.centered}>
-          <ActivityIndicator color={COLORS.primary} size="large" />
+          <ActivityIndicator color={c.primary} size="large" />
           <Text style={styles.loadingText}>Getting your location...</Text>
         </View>
       ) : permissionDenied ? (
         <View style={styles.centered}>
-          <Ionicons name="location" size={64} color={COLORS.muted} />
+          <Ionicons name="location" size={64} color={c.muted} />
           <Text style={styles.deniedTitle}>Location Access Denied</Text>
           <Text style={styles.deniedBody}>
             Please enable location permissions in your browser settings to use the Activity Map.
@@ -75,7 +77,7 @@ export default function MapScreen() {
       ) : (
         <View style={styles.mapContainer}>
           <View style={styles.webMap}>
-            <Ionicons name="map" size={56} color={COLORS.primary} />
+            <Ionicons name="map" size={56} color={c.primary} />
             <Text style={styles.webMapTitle}>Activity Map</Text>
             <Text style={styles.deniedBody}>
               Native map rendering is available on iOS and Android. Web preview shows the same
@@ -107,7 +109,7 @@ export default function MapScreen() {
             )}
 
             <Pressable style={styles.refreshBtn} onPress={fetchLocation}>
-              <Ionicons name="refresh" size={20} color={COLORS.white} />
+              <Ionicons name="refresh" size={20} color={c.white} />
               <Text style={styles.refreshText}>Refresh Location</Text>
             </Pressable>
           </View>
@@ -117,10 +119,11 @@ export default function MapScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+  safe: { flex: 1, backgroundColor: c.bg },
   header: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: c.primary,
     paddingHorizontal: 24,
     paddingTop: 12,
     paddingBottom: 28,
@@ -130,7 +133,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  logo: { color: COLORS.white, fontSize: 34, fontWeight: "900", letterSpacing: -1 },
+  logo: { color: c.white, fontSize: 34, fontWeight: "900", letterSpacing: -1 },
   centered: {
     flex: 1,
     alignItems: "center",
@@ -138,9 +141,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     gap: 12,
   },
-  loadingText: { color: COLORS.muted, fontSize: 15, marginTop: 8 },
-  deniedTitle: { color: COLORS.inputText, fontSize: 20, fontWeight: "700", marginTop: 8 },
-  deniedBody: { color: COLORS.muted, fontSize: 15, textAlign: "center", lineHeight: 22 },
+  loadingText: { color: c.muted, fontSize: 15, marginTop: 8 },
+  deniedTitle: { color: c.inputText, fontSize: 20, fontWeight: "700", marginTop: 8 },
+  deniedBody: { color: c.muted, fontSize: 15, textAlign: "center", lineHeight: 22 },
   mapContainer: { flex: 1, padding: 20, gap: 16 },
   webMap: {
     flex: 1,
@@ -148,26 +151,26 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "#DCE3EA",
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
     gap: 10,
   },
-  webMapTitle: { color: COLORS.primary, fontSize: 24, fontWeight: "900" },
+  webMapTitle: { color: c.primary, fontSize: 24, fontWeight: "900" },
   card: {
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     borderRadius: 16,
     padding: 20,
     boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.12)",
     gap: 10,
   },
-  cardTitle: { color: COLORS.primary, fontSize: 18, fontWeight: "800", marginBottom: 4 },
+  cardTitle: { color: c.primary, fontSize: 18, fontWeight: "800", marginBottom: 4 },
   cardRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  cardLabel: { color: COLORS.muted, fontSize: 14 },
-  cardValue: { color: COLORS.inputText, fontSize: 14, fontWeight: "600" },
+  cardLabel: { color: c.muted, fontSize: 14 },
+  cardValue: { color: c.inputText, fontSize: 14, fontWeight: "600" },
   refreshBtn: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: c.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
@@ -176,5 +179,5 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 6,
   },
-  refreshText: { color: COLORS.white, fontSize: 16, fontWeight: "700" },
-});
+  refreshText: { color: c.white, fontSize: 16, fontWeight: "700" },
+  });

@@ -22,9 +22,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { COLORS } from "@/components/auth-shell";
 import { friendlyError } from "@/lib/errors";
 import { auth, firestore } from "@/lib/firebase";
+import { Palette, useTheme, useThemedStyles } from "@/lib/theme";
 
 type Team = { team_name: string; grade_level: string };
 type Member = { uid: string; first_name: string; last_name: string; isMe: boolean };
@@ -32,6 +32,8 @@ type Member = { uid: string; first_name: string; last_name: string; isMe: boolea
 export default function TeamScreen() {
   const router = useRouter();
   const user = auth.currentUser;
+  const { palette: c } = useTheme();
+  const styles = useThemedStyles(makeStyles);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -150,8 +152,8 @@ export default function TeamScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.loadingWrap}>
-          <Text style={[styles.headerLogo, { color: COLORS.primary }]}>STEMM</Text>
-          <ActivityIndicator color={COLORS.primary} size="large" />
+          <Text style={[styles.headerLogo, { color: c.primary }]}>STEMM</Text>
+          <ActivityIndicator color={c.primary} size="large" />
           <Text style={styles.loadingText}>Loading..</Text>
         </View>
       </SafeAreaView>
@@ -176,7 +178,7 @@ export default function TeamScreen() {
         {team && teamId ? (
           <>
             <View style={styles.avatar}>
-              <MaterialCommunityIcons name="face-man" size={64} color={COLORS.inputText} />
+              <MaterialCommunityIcons name="face-man" size={64} color={c.inputText} />
             </View>
 
             <View style={styles.nameRow}>
@@ -185,7 +187,7 @@ export default function TeamScreen() {
                 hitSlop={10}
                 onPress={() => router.push({ pathname: "/edit-team", params: { teamId } } as any)}
               >
-                <MaterialCommunityIcons name="pencil-outline" size={20} color={COLORS.primary} />
+                <MaterialCommunityIcons name="pencil-outline" size={20} color={c.primary} />
               </Pressable>
             </View>
             <Text style={styles.idText}>ID: {teamId}</Text>
@@ -249,6 +251,7 @@ function MenuRow({
   danger?: boolean;
   last?: boolean;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <Pressable
       style={({ pressed }) => [
@@ -263,20 +266,21 @@ function MenuRow({
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+  safe: { flex: 1, backgroundColor: c.bg },
   header: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: c.primary,
     paddingHorizontal: 24,
     paddingTop: 12,
     paddingBottom: 28,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
-  headerLogo: { color: COLORS.white, fontSize: 34, fontWeight: "900", letterSpacing: -1 },
+  headerLogo: { color: c.white, fontSize: 34, fontWeight: "900", letterSpacing: -1 },
   scrollContent: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 32 },
   pageTitle: {
-    color: COLORS.primary,
+    color: c.primary,
     fontSize: 32,
     fontWeight: "800",
     textAlign: "center",
@@ -289,26 +293,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     gap: 16,
   },
-  loadingText: { color: COLORS.primary, fontSize: 16 },
+  loadingText: { color: c.primary, fontSize: 16 },
   errorBox: {
-    backgroundColor: COLORS.errorBg,
-    borderColor: COLORS.errorBorder,
+    backgroundColor: c.errorBg,
+    borderColor: c.errorBorder,
     borderWidth: 1,
     borderRadius: 16,
     padding: 12,
     marginBottom: 16,
   },
-  errorText: { color: COLORS.error, fontSize: 14 },
+  errorText: { color: c.error, fontSize: 14 },
   avatar: {
     alignSelf: "center",
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.input,
+    borderColor: c.input,
     boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.12)",
   },
   nameRow: {
@@ -318,11 +322,11 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 16,
   },
-  teamName: { color: COLORS.primary, fontSize: 22, fontWeight: "800" },
-  idText: { color: COLORS.inputText, fontSize: 16, textAlign: "center", marginTop: 4 },
-  gradeLevel: { color: COLORS.muted, fontSize: 14, textAlign: "center", marginTop: 2 },
+  teamName: { color: c.primary, fontSize: 22, fontWeight: "800" },
+  idText: { color: c.inputText, fontSize: 16, textAlign: "center", marginTop: 4 },
+  gradeLevel: { color: c.muted, fontSize: 14, textAlign: "center", marginTop: 2 },
   sectionLabel: {
-    color: COLORS.muted,
+    color: c.muted,
     fontSize: 11,
     fontWeight: "700",
     textTransform: "uppercase",
@@ -331,64 +335,64 @@ const styles = StyleSheet.create({
   },
   menu: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: COLORS.input,
+    borderTopColor: c.input,
   },
   menuSpaced: { marginTop: 28 },
   menuRow: {
     paddingVertical: 18,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.input,
+    borderBottomColor: c.input,
   },
   menuRowLast: { borderBottomWidth: 0 },
   menuRowPressed: { opacity: 0.5 },
-  menuLabel: { color: COLORS.inputText, fontSize: 16, fontWeight: "600" },
-  menuLabelDanger: { color: COLORS.error, fontWeight: "700" },
+  menuLabel: { color: c.inputText, fontSize: 16, fontWeight: "600" },
+  menuLabelDanger: { color: c.error, fontWeight: "700" },
   memberRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.input,
+    borderBottomColor: c.input,
   },
-  memberName: { color: COLORS.inputText, fontSize: 16 },
+  memberName: { color: c.inputText, fontSize: 16 },
   youBadge: {
     fontSize: 11,
     fontWeight: "700",
-    color: COLORS.primary,
-    backgroundColor: COLORS.white,
+    color: c.primary,
+    backgroundColor: c.white,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,
     overflow: "hidden",
   },
   card: {
-    backgroundColor: COLORS.white,
+    backgroundColor: c.white,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.input,
+    borderColor: c.input,
     padding: 16,
     gap: 8,
   },
   cardHeading: {
-    color: COLORS.primary,
+    color: c.primary,
     fontSize: 16,
     fontWeight: "700",
     textAlign: "center",
     marginBottom: 4,
   },
   primaryBtn: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: c.primary,
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: "center",
   },
-  primaryBtnText: { color: COLORS.white, fontSize: 16, fontWeight: "700" },
+  primaryBtnText: { color: c.white, fontSize: 16, fontWeight: "700" },
   secondaryBtn: {
-    backgroundColor: COLORS.input,
+    backgroundColor: c.input,
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: "center",
   },
-  secondaryBtnText: { color: COLORS.primary, fontSize: 16, fontWeight: "700" },
-});
+  secondaryBtnText: { color: c.primary, fontSize: 16, fontWeight: "700" },
+  });
