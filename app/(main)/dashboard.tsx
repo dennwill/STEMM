@@ -1,14 +1,13 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { sendEmailVerification } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import { useCallback, useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { sendEmailVerification } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
 
 import AdBanner from "@/components/ad-banner";
-import { AnimatedProgressBar } from "@/components/animated-progress-bar";
 import { PressableScale } from "@/components/pressable-scale";
 import { auth, firestore, trackEvent } from "@/lib/firebase";
 import { registerForPushNotifications, scheduleActivityReminder } from "@/lib/notifications";
@@ -75,17 +74,15 @@ export default function DashboardScreen() {
         const userSnap = await getDoc(doc(firestore, "users", user.uid));
         if (userSnap.exists()) {
           const userData = userSnap.data() as { first_name?: string; team_id?: string };
-          if (userData.first_name) {
-            setUserName(userData.first_name);
-          }
+          setUserName(userData.first_name ?? "");
+
           if (userData.team_id) {
             const teamSnap = await getDoc(doc(firestore, "teams", userData.team_id));
-            if (teamSnap.exists()) {
-              const teamData = teamSnap.data() as { team_name?: string };
-              if (teamData.team_name) {
-                setTeamName(teamData.team_name);
-              }
-            }
+            const teamData = teamSnap.exists() ? (teamSnap.data() as { team_name?: string }) : null;
+            setTeamName(teamData?.team_name ?? "");
+          } else {
+            // No team_id (e.g. the user just left their team) — clear the stale name.
+            setTeamName("");
           }
         }
       } catch {
@@ -153,24 +150,11 @@ export default function DashboardScreen() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.logo}>STEMM</Text>
-          <PressableScale
-            style={styles.avatarBtn}
-            onPress={() => router.push("/team" as any)}
-          >
+          <PressableScale style={styles.avatarBtn} onPress={() => router.push("/team" as any)}>
             <View style={styles.avatarCircle}>
-              <Text style={styles.avatarInitials}>
-                {userName ? userName.charAt(0).toUpperCase() : "M"}
-              </Text>
+              <Text style={styles.avatarInitials}>{userName ? userName.charAt(0).toUpperCase() : "M"}</Text>
             </View>
           </PressableScale>
-        </View>
-        <View style={styles.welcomeContainer}>
-          <Text style={styles.welcomeText}>
-            Hello, <Text style={styles.userName}>{userName || "Student"}</Text> 👋
-          </Text>
-          <Text style={styles.subWelcomeText}>
-            {teamName ? `🚀 Team: ${teamName}` : "🏆 Join or create a team in the Team tab"}
-          </Text>
         </View>
       </View>
 
@@ -186,6 +170,15 @@ export default function DashboardScreen() {
           />
         }
       >
+        <Animated.View entering={FadeInDown.duration(400).springify()} style={styles.welcomeContainer}>
+          <Text style={styles.welcomeText}>
+            Hello, <Text style={styles.userName}>{userName || "Student"}</Text>
+          </Text>
+          <Text style={styles.subWelcomeText}>
+            {teamName ? `Team: ${teamName}` : "Join or create a team in the Team tab"}
+          </Text>
+        </Animated.View>
+
         {!emailVerified && !bannerDismissed && (
           <Animated.View entering={FadeInDown.duration(400).springify()} style={styles.verifyBanner}>
             <View style={styles.verifyIcon}>
@@ -193,9 +186,7 @@ export default function DashboardScreen() {
             </View>
             <View style={styles.verifyContent}>
               <Text style={styles.verifyTitle}>Verify your email</Text>
-              <Text style={styles.verifyText}>
-                Confirm your email address to secure your account.
-              </Text>
+              <Text style={styles.verifyText}>Confirm your email address to secure your account.</Text>
               <PressableScale
                 onPress={resendVerification}
                 disabled={resendState !== "idle"}
@@ -210,30 +201,11 @@ export default function DashboardScreen() {
                 </Text>
               </PressableScale>
             </View>
-            <PressableScale
-              onPress={() => setBannerDismissed(true)}
-              hitSlop={10}
-              style={styles.verifyClose}
-            >
+            <PressableScale onPress={() => setBannerDismissed(true)} hitSlop={10} style={styles.verifyClose}>
               <Ionicons name="close" size={18} color="#92400E" />
             </PressableScale>
           </Animated.View>
         )}
-
-        {/* Progress Metrics Bar */}
-        <Animated.View entering={FadeInDown.duration(400).springify()} style={styles.metricsCard}>
-          <View style={styles.metricsHeader}>
-            <Text style={styles.metricsTitle}>STEMM Sprint Goal</Text>
-            <Text style={styles.metricsBadge}>Sprint 3</Text>
-          </View>
-          <Text style={styles.metricsSub}>
-            Explore and complete activity challenges to sync team data
-          </Text>
-          <View style={styles.progressContainer}>
-            <AnimatedProgressBar progress={0.85} color="#10B981" trackColor="#E2E8F0" height={8} />
-            <Text style={styles.progressText}>85% Sprint Progress</Text>
-          </View>
-        </Animated.View>
 
         <Text style={styles.sectionTitle}>Engineering Challenges</Text>
         <View style={styles.grid}>
@@ -272,10 +244,7 @@ export default function DashboardScreen() {
           {HEALTH.map((activity, i) => {
             const theme = ACTIVITY_THEMES[activity.id] || ACTIVITY_THEMES.performance;
             return (
-              <Animated.View
-                key={activity.id}
-                entering={FadeInDown.delay(240 + i * 60).springify()}
-              >
+              <Animated.View key={activity.id} entering={FadeInDown.delay(240 + i * 60).springify()}>
                 <PressableScale
                   style={[styles.listRow, { backgroundColor: theme.bg }]}
                   onPress={() => openActivity(activity)}
@@ -323,228 +292,183 @@ export default function DashboardScreen() {
 
 const makeStyles = (c: Palette) =>
   StyleSheet.create({
-  safe: { flex: 1, backgroundColor: c.bg },
-  header: {
-    backgroundColor: c.primary,
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 28,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    boxShadow: "0px 6px 16px rgba(7, 76, 92, 0.15)",
-  },
-  headerTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  logo: { color: c.white, fontSize: 36, fontWeight: "900", letterSpacing: -1 },
-  avatarBtn: {
-    padding: 2,
-  },
-  avatarCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: c.white,
-  },
-  avatarInitials: {
-    color: c.white,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  welcomeContainer: {
-    marginTop: 18,
-  },
-  welcomeText: {
-    color: "rgba(255, 255, 255, 0.8)",
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  userName: {
-    color: c.white,
-    fontWeight: "800",
-    fontSize: 20,
-  },
-  subWelcomeText: {
-    color: "rgba(255, 255, 255, 0.9)",
-    fontSize: 13,
-    fontWeight: "600",
-    marginTop: 4,
-  },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32 },
-  verifyBanner: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    backgroundColor: "#FFFBEB", // Amber 50
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#FDE68A", // Amber 200
-    gap: 12,
-  },
-  verifyIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#FEF3C7", // Amber 100
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  verifyContent: { flex: 1 },
-  verifyTitle: { fontSize: 14, fontWeight: "800", color: "#92400E" },
-  verifyText: { fontSize: 12, color: "#B45309", marginTop: 2, lineHeight: 17 },
-  verifyAction: { marginTop: 8, alignSelf: "flex-start" },
-  verifyActionText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#B45309",
-    textDecorationLine: "underline",
-  },
-  verifyClose: { padding: 2 },
-  metricsCard: {
-    backgroundColor: c.white,
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: "rgba(0, 0, 0, 0.03)",
-    boxShadow: "0px 8px 24px rgba(0, 0, 0, 0.05)",
-  },
-  metricsHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  metricsTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: c.primary,
-  },
-  metricsBadge: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: c.primary,
-    backgroundColor: "rgba(7, 76, 92, 0.1)",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    overflow: "hidden",
-  },
-  metricsSub: {
-    fontSize: 12,
-    color: c.muted,
-    marginTop: 4,
-    marginBottom: 16,
-  },
-  progressContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  progressText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#0F766E",
-  },
-  sectionTitle: {
-    color: c.primary,
-    fontSize: 18,
-    fontWeight: "800",
-    marginBottom: 14,
-    marginTop: 12,
-    letterSpacing: -0.2,
-  },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    rowGap: 16,
-    marginBottom: 16,
-  },
-  gridCardWrap: {
-    width: "48%",
-  },
-  gridCard: {
-    width: "100%",
-    borderRadius: 20,
-    paddingVertical: 20,
-    paddingHorizontal: 14,
-    alignItems: "center",
-    gap: 14,
-    borderWidth: 1.5,
-    borderColor: "rgba(0, 0, 0, 0.02)",
-    boxShadow: "0px 6px 16px rgba(0, 0, 0, 0.03)",
-  },
-  gridIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: "center",
-    justifyContent: "center",
-    boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.04)",
-  },
-  gridInfo: {
-    alignItems: "center",
-    gap: 10,
-    width: "100%",
-  },
-  gridLabel: {
-    fontSize: 13,
-    fontWeight: "700",
-    textAlign: "center",
-    lineHeight: 18,
-    height: 36, // Keep aligned height
-  },
-  cardFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-  },
-  cardLinkText: {
-    fontSize: 11,
-    fontWeight: "800",
-    textTransform: "uppercase",
-  },
-  list: { gap: 14, marginBottom: 16 },
-  listRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderRadius: 20,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderWidth: 1.5,
-    borderColor: "rgba(0, 0, 0, 0.02)",
-    boxShadow: "0px 6px 16px rgba(0, 0, 0, 0.03)",
-  },
-  listIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 4,
-  },
-  listContent: {
-    flex: 1,
-    paddingRight: 8,
-  },
-  listLabel: {
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  listSubLabel: {
-    fontSize: 12,
-    color: c.muted,
-    marginTop: 2,
-    fontWeight: "500",
-  },
-  adBanner: { marginTop: 12, marginBottom: 12 },
+    safe: { flex: 1, backgroundColor: c.bg },
+    header: {
+      backgroundColor: c.primary,
+      paddingHorizontal: 24,
+      paddingTop: 16,
+      paddingBottom: 28,
+      borderBottomLeftRadius: 32,
+      borderBottomRightRadius: 32,
+      boxShadow: "0px 6px 16px rgba(7, 76, 92, 0.15)",
+    },
+    headerTop: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    logo: { color: c.white, fontSize: 36, fontWeight: "900", letterSpacing: -1 },
+    avatarBtn: {
+      padding: 2,
+    },
+    avatarCircle: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: "rgba(255, 255, 255, 0.2)",
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1.5,
+      borderColor: c.white,
+    },
+    avatarInitials: {
+      color: c.white,
+      fontSize: 16,
+      fontWeight: "700",
+    },
+    welcomeContainer: {
+      marginBottom: 20,
+    },
+    welcomeText: {
+      color: c.muted,
+      fontSize: 16,
+      fontWeight: "500",
+    },
+    userName: {
+      color: c.primary,
+      fontWeight: "800",
+      fontSize: 20,
+    },
+    subWelcomeText: {
+      color: c.muted,
+      fontSize: 13,
+      fontWeight: "600",
+      marginTop: 4,
+    },
+    scrollContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32 },
+    verifyBanner: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      backgroundColor: "#FFFBEB", // Amber 50
+      borderRadius: 16,
+      padding: 14,
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: "#FDE68A", // Amber 200
+      gap: 12,
+    },
+    verifyIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: "#FEF3C7", // Amber 100
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    verifyContent: { flex: 1 },
+    verifyTitle: { fontSize: 14, fontWeight: "800", color: "#92400E" },
+    verifyText: { fontSize: 12, color: "#B45309", marginTop: 2, lineHeight: 17 },
+    verifyAction: { marginTop: 8, alignSelf: "flex-start" },
+    verifyActionText: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: "#B45309",
+      textDecorationLine: "underline",
+    },
+    verifyClose: { padding: 2 },
+    sectionTitle: {
+      color: c.primary,
+      fontSize: 18,
+      fontWeight: "800",
+      marginBottom: 14,
+      marginTop: 12,
+      letterSpacing: -0.2,
+    },
+    grid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "space-between",
+      rowGap: 16,
+      marginBottom: 16,
+    },
+    gridCardWrap: {
+      width: "48%",
+    },
+    gridCard: {
+      width: "100%",
+      borderRadius: 20,
+      paddingVertical: 20,
+      paddingHorizontal: 14,
+      alignItems: "center",
+      gap: 14,
+      borderWidth: 1.5,
+      borderColor: "rgba(0, 0, 0, 0.02)",
+      boxShadow: "0px 6px 16px rgba(0, 0, 0, 0.03)",
+    },
+    gridIconContainer: {
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      alignItems: "center",
+      justifyContent: "center",
+      boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.04)",
+    },
+    gridInfo: {
+      alignItems: "center",
+      gap: 10,
+      width: "100%",
+    },
+    gridLabel: {
+      fontSize: 13,
+      fontWeight: "700",
+      textAlign: "center",
+      lineHeight: 18,
+      height: 36, // Keep aligned height
+    },
+    cardFooter: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 4,
+    },
+    cardLinkText: {
+      fontSize: 11,
+      fontWeight: "800",
+      textTransform: "uppercase",
+    },
+    list: { gap: 14, marginBottom: 16 },
+    listRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      borderRadius: 20,
+      paddingVertical: 16,
+      paddingHorizontal: 16,
+      borderWidth: 1.5,
+      borderColor: "rgba(0, 0, 0, 0.02)",
+      boxShadow: "0px 6px 16px rgba(0, 0, 0, 0.03)",
+    },
+    listIconContainer: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 4,
+    },
+    listContent: {
+      flex: 1,
+      paddingRight: 8,
+    },
+    listLabel: {
+      fontSize: 15,
+      fontWeight: "700",
+    },
+    listSubLabel: {
+      fontSize: 12,
+      color: c.muted,
+      marginTop: 2,
+      fontWeight: "500",
+    },
+    adBanner: { marginTop: 12, marginBottom: 12 },
   });
