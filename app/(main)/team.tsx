@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -37,6 +38,7 @@ export default function TeamScreen() {
   const styles = useThemedStyles(makeStyles);
 
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [teamId, setTeamId] = useState<string | null>(null);
   const [team, setTeam] = useState<Team | null>(null);
@@ -61,7 +63,8 @@ export default function TeamScreen() {
 
   async function loadTeam(silent = false) {
     if (!user) return;
-    if (!silent) setLoading(true);
+    if (silent) setRefreshing(true);
+    else setLoading(true);
     setError(null);
 
     // Refresh the cached verification flag so a just-verified user sees the
@@ -122,8 +125,11 @@ export default function TeamScreen() {
     } finally {
       hasLoaded.current = true;
       setLoading(false);
+      setRefreshing(false);
     }
   }
+
+  const handleRefresh = useCallback(() => loadTeam(true), []);
 
   async function logout() {
     await signOut(auth);
@@ -187,7 +193,18 @@ export default function TeamScreen() {
         <Text style={styles.headerLogo}>STEMM</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={c.primary}
+            colors={[c.primary]}
+          />
+        }
+      >
         <Text style={styles.pageTitle}>Team</Text>
 
         {error && (
