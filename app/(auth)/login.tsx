@@ -66,6 +66,13 @@ export default function LoginScreen() {
         />
       </View>
 
+      <Pressable
+        style={styles.forgotWrap}
+        onPress={() => router.push("/(auth)/forgot-password" as any)}
+      >
+        <Text style={styles.forgotLink}>Forgot password?</Text>
+      </Pressable>
+
       {error && <Text style={fieldStyles.errorText}>{error}</Text>}
 
       <View style={styles.actions}>
@@ -87,6 +94,8 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   actions: { marginTop: 8, gap: 14 },
+  forgotWrap: { alignSelf: "flex-end", marginTop: -4, marginBottom: 8 },
+  forgotLink: { color: COLORS.primary, fontSize: 13, fontWeight: "600" },
   altLink: { textAlign: "center", color: COLORS.muted, fontSize: 13 },
   altLinkAccent: { color: COLORS.primary, fontWeight: "600", textDecorationLine: "underline" },
 });
