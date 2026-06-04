@@ -65,7 +65,6 @@ export const lightActivityThemes: Record<string, ActivityTheme> = {
   performance: { bg: "#ECFDF5", accent: "#10B981", iconBg: "#D1FAE5", textColor: "#047857" }, // Emerald
   reaction: { bg: "#EEF2FF", accent: "#6366F1", iconBg: "#E0E7FF", textColor: "#4338CA" }, // Indigo
   breathing: { bg: "#F0FDFA", accent: "#14B8A6", iconBg: "#CCFBF1", textColor: "#0F766E" }, // Teal
-  map: { bg: "#EFF6FF", accent: "#3B82F6", iconBg: "#DBEAFE", textColor: "#1D4ED8" }, // Blue
 };
 
 // Dark variants keep each activity's hue identity but flip lightness:
@@ -78,7 +77,6 @@ export const darkActivityThemes: Record<string, ActivityTheme> = {
   performance: { bg: "#022C22", accent: "#34D399", iconBg: "#064E3B", textColor: "#6EE7B7" }, // Emerald
   reaction: { bg: "#1E1B4B", accent: "#818CF8", iconBg: "#312E81", textColor: "#A5B4FC" }, // Indigo
   breathing: { bg: "#042F2E", accent: "#2DD4BF", iconBg: "#134E4A", textColor: "#5EEAD4" }, // Teal
-  map: { bg: "#172554", accent: "#60A5FA", iconBg: "#1E3A8A", textColor: "#93C5FD" }, // Blue
 };
 
 // ---------------------------------------------------------------------------

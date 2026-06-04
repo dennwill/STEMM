@@ -257,27 +257,6 @@ export default function DashboardScreen() {
           })}
         </View>
 
-        <Text style={styles.sectionTitle}>Tools</Text>
-        <View style={styles.list}>
-          <Animated.View entering={FadeInDown.delay(420).springify()}>
-            <PressableScale
-              style={[styles.listRow, { backgroundColor: ACTIVITY_THEMES.map.bg }]}
-              onPress={() => router.push("/map" as any)}
-            >
-              <View style={[styles.listIconContainer, { backgroundColor: ACTIVITY_THEMES.map.iconBg }]}>
-                <Ionicons name="map" size={24} color={ACTIVITY_THEMES.map.accent} />
-              </View>
-              <View style={styles.listContent}>
-                <Text style={[styles.listLabel, { color: ACTIVITY_THEMES.map.textColor }]}>
-                  Interactive Activity Map
-                </Text>
-                <Text style={styles.listSubLabel}>Track and discover STEMM challenges around campus</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={ACTIVITY_THEMES.map.accent} />
-            </PressableScale>
-          </Animated.View>
-        </View>
-
         <AdBanner style={styles.adBanner} />
       </ScrollView>
     </SafeAreaView>

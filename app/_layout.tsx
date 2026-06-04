@@ -61,7 +61,6 @@ function RootLayoutNav() {
           <Stack.Screen name="performance" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="reaction" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="breathing" options={{ animation: 'slide_from_right' }} />
-          <Stack.Screen name="map" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="settings" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="terms" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="privacy" options={{ animation: 'slide_from_right' }} />
