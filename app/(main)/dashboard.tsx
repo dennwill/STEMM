@@ -1,9 +1,10 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { sendEmailVerification } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 
 import AdBanner from "@/components/ad-banner";
@@ -107,20 +108,25 @@ export default function DashboardScreen() {
 
   const [userName, setUserName] = useState<string>("");
   const [teamName, setTeamName] = useState<string>("");
+  const [emailVerified, setEmailVerified] = useState<boolean>(user?.emailVerified ?? true);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    if (!user) {
-      router.replace("/(auth)/login" as any);
-      return;
-    }
+  const loadDashboard = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!user) return;
+      if (opts?.silent) setRefreshing(true);
 
-    // Register push notification token on mount
-    registerForPushNotifications().catch((err) => {
-      console.warn("Could not register push notifications:", err);
-    });
+      // Refresh the cached verification flag so a just-verified user loses the banner.
+      try {
+        await user.reload();
+      } catch {
+        // Fall back to the cached flag if the reload fails.
+      }
+      setEmailVerified(user.emailVerified);
 
-    // Fetch user profile and team details
-    const fetchProfile = async () => {
+      // Fetch user profile and team details
       try {
         const userSnap = await getDoc(doc(firestore, "users", user.uid));
         if (userSnap.exists()) {
@@ -140,11 +146,28 @@ export default function DashboardScreen() {
         }
       } catch {
         console.log("Could not fetch user/team details for greeting banner (using default style).");
+      } finally {
+        if (opts?.silent) setRefreshing(false);
       }
-    };
-    
-    fetchProfile();
-  }, [router, user]);
+    },
+    [user],
+  );
+
+  const handleRefresh = useCallback(() => loadDashboard({ silent: true }), [loadDashboard]);
+
+  useEffect(() => {
+    if (!user) {
+      router.replace("/(auth)/login" as any);
+      return;
+    }
+
+    // Register push notification token on mount
+    registerForPushNotifications().catch((err) => {
+      console.warn("Could not register push notifications:", err);
+    });
+
+    loadDashboard();
+  }, [loadDashboard, router, user]);
 
   const ROUTES: Record<string, string> = {
     parachute: "/parachute",
@@ -154,6 +177,20 @@ export default function DashboardScreen() {
     performance: "/performance",
     reaction: "/reaction",
     breathing: "/breathing",
+  };
+
+  const resendVerification = async () => {
+    const current = auth.currentUser;
+    if (!current || resendState === "sending") return;
+    setResendState("sending");
+    try {
+      await sendEmailVerification(current);
+      trackEvent("verification_email_sent", { source: "dashboard_banner" });
+      setResendState("sent");
+    } catch (err) {
+      console.warn("Could not resend verification email:", err);
+      setResendState("idle");
+    }
   };
 
   const openActivity = (activity: Activity) => {
@@ -193,7 +230,52 @@ export default function DashboardScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={COLORS.primary}
+            colors={[COLORS.primary]}
+          />
+        }
+      >
+        {!emailVerified && !bannerDismissed && (
+          <Animated.View entering={FadeInDown.duration(400).springify()} style={styles.verifyBanner}>
+            <View style={styles.verifyIcon}>
+              <Ionicons name="mail-unread-outline" size={20} color="#B45309" />
+            </View>
+            <View style={styles.verifyContent}>
+              <Text style={styles.verifyTitle}>Verify your email</Text>
+              <Text style={styles.verifyText}>
+                Confirm your email address to secure your account.
+              </Text>
+              <PressableScale
+                onPress={resendVerification}
+                disabled={resendState !== "idle"}
+                style={styles.verifyAction}
+              >
+                <Text style={styles.verifyActionText}>
+                  {resendState === "sending"
+                    ? "Sending…"
+                    : resendState === "sent"
+                      ? "✓ Email sent — check your inbox"
+                      : "Resend verification email"}
+                </Text>
+              </PressableScale>
+            </View>
+            <PressableScale
+              onPress={() => setBannerDismissed(true)}
+              hitSlop={10}
+              style={styles.verifyClose}
+            >
+              <Ionicons name="close" size={18} color="#92400E" />
+            </PressableScale>
+          </Animated.View>
+        )}
+
         {/* Progress Metrics Bar */}
         <Animated.View entering={FadeInDown.duration(400).springify()} style={styles.metricsCard}>
           <View style={styles.metricsHeader}>
@@ -350,6 +432,36 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   scrollContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32 },
+  verifyBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "#FFFBEB", // Amber 50
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#FDE68A", // Amber 200
+    gap: 12,
+  },
+  verifyIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#FEF3C7", // Amber 100
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  verifyContent: { flex: 1 },
+  verifyTitle: { fontSize: 14, fontWeight: "800", color: "#92400E" },
+  verifyText: { fontSize: 12, color: "#B45309", marginTop: 2, lineHeight: 17 },
+  verifyAction: { marginTop: 8, alignSelf: "flex-start" },
+  verifyActionText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#B45309",
+    textDecorationLine: "underline",
+  },
+  verifyClose: { padding: 2 },
   metricsCard: {
     backgroundColor: COLORS.white,
     borderRadius: 20,

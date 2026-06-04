@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useState } from "react";
 import { Text, TextInput, View } from "react-native";
@@ -39,6 +39,15 @@ export default function RegisterScreen() {
       });
 
       trackEvent("sign_up", { method: "email" });
+
+      // Send a verification email — never block account creation if this fails.
+      try {
+        await sendEmailVerification(cred.user);
+        trackEvent("verification_email_sent");
+      } catch (verifyErr) {
+        console.warn("Could not send verification email:", verifyErr);
+      }
+
       router.replace("/dashboard" as any);
     } catch (e: any) {
       setError(friendlyError(e, "Registration failed. Please try again."));
