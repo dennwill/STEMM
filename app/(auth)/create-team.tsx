@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { AuthShell, FormHeading, PrimaryButton, useFieldStyles } from "@/components/auth-shell";
+import { refreshEmailVerified } from "@/lib/auth";
 import { generateDiscriminant } from "@/lib/discriminant";
 import { friendlyError } from "@/lib/errors";
 import { auth, firestore } from "@/lib/firebase";
@@ -75,6 +76,11 @@ export default function CreateTeamScreen() {
     setSubmitting(true);
     setError(null);
     try {
+      if (!(await refreshEmailVerified())) {
+        setError("Please verify your email before creating a team.");
+        return;
+      }
+
       const code = await findUniqueDiscriminant();
 
       await setDoc(doc(firestore, "teams", code), {

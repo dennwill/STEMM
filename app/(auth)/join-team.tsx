@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { AuthShell, FormHeading, PrimaryButton, useFieldStyles } from "@/components/auth-shell";
+import { refreshEmailVerified } from "@/lib/auth";
 import { friendlyError } from "@/lib/errors";
 import { auth, firestore } from "@/lib/firebase";
 import { Palette, useThemedStyles } from "@/lib/theme";
@@ -34,6 +35,11 @@ export default function JoinTeamScreen() {
 
     setSubmitting(true);
     try {
+      if (!(await refreshEmailVerified())) {
+        setError("Please verify your email before joining a team.");
+        return;
+      }
+
       const teamSnap = await getDoc(doc(firestore, "teams", normalized));
       if (!teamSnap.exists()) {
         setError("No team found with that code.");

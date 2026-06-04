@@ -22,8 +22,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { refreshEmailVerified, resendVerificationEmail } from "@/lib/auth";
 import { friendlyError } from "@/lib/errors";
-import { auth, firestore } from "@/lib/firebase";
+import { auth, firestore, trackEvent } from "@/lib/firebase";
 import { Palette, useTheme, useThemedStyles } from "@/lib/theme";
 
 type Team = { team_name: string; grade_level: string };
@@ -40,6 +41,8 @@ export default function TeamScreen() {
   const [teamId, setTeamId] = useState<string | null>(null);
   const [team, setTeam] = useState<Team | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
+  const [emailVerified, setEmailVerified] = useState<boolean>(user?.emailVerified ?? true);
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
   const hasLoaded = useRef(false);
 
   // Reload whenever the tab regains focus so edits made on the edit screen
@@ -60,6 +63,11 @@ export default function TeamScreen() {
     if (!user) return;
     if (!silent) setLoading(true);
     setError(null);
+
+    // Refresh the cached verification flag so a just-verified user sees the
+    // create/join buttons without needing to sign out and back in.
+    setEmailVerified(await refreshEmailVerified());
+
     try {
       const userSnap = await getDoc(doc(firestore, "users", user.uid));
       if (!userSnap.exists()) {
@@ -120,6 +128,19 @@ export default function TeamScreen() {
   async function logout() {
     await signOut(auth);
     router.replace("/(auth)/login" as any);
+  }
+
+  async function resendVerification() {
+    if (resendState === "sending") return;
+    setResendState("sending");
+    try {
+      await resendVerificationEmail();
+      trackEvent("verification_email_sent", { source: "team_gate" });
+      setResendState("sent");
+    } catch (err) {
+      console.warn("Could not resend verification email:", err);
+      setResendState("idle");
+    }
   }
 
   function confirmLeaveTeam() {
@@ -208,18 +229,41 @@ export default function TeamScreen() {
         ) : (
           <View style={styles.card}>
             <Text style={styles.cardHeading}>Get on a team to continue</Text>
-            <Pressable
-              style={styles.primaryBtn}
-              onPress={() => router.push("/(auth)/create-team" as any)}
-            >
-              <Text style={styles.primaryBtnText}>Create a new team</Text>
-            </Pressable>
-            <Pressable
-              style={styles.secondaryBtn}
-              onPress={() => router.push("/(auth)/join-team" as any)}
-            >
-              <Text style={styles.secondaryBtnText}>Join an existing team</Text>
-            </Pressable>
+            {emailVerified ? (
+              <>
+                <Pressable
+                  style={styles.primaryBtn}
+                  onPress={() => router.push("/(auth)/create-team" as any)}
+                >
+                  <Text style={styles.primaryBtnText}>Create a new team</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.secondaryBtn}
+                  onPress={() => router.push("/(auth)/join-team" as any)}
+                >
+                  <Text style={styles.secondaryBtnText}>Join an existing team</Text>
+                </Pressable>
+              </>
+            ) : (
+              <View style={styles.verifyGate}>
+                <Text style={styles.verifyGateText}>
+                  Verify your email to join or create a team. Check your inbox for the
+                  confirmation link.
+                </Text>
+                <Pressable
+                  onPress={resendVerification}
+                  disabled={resendState !== "idle"}
+                >
+                  <Text style={styles.verifyGateLink}>
+                    {resendState === "sending"
+                      ? "Sending…"
+                      : resendState === "sent"
+                        ? "✓ Email sent — check your inbox"
+                        : "Resend verification email"}
+                  </Text>
+                </Pressable>
+              </View>
+            )}
           </View>
         )}
 
@@ -395,4 +439,17 @@ const makeStyles = (c: Palette) =>
     alignItems: "center",
   },
   secondaryBtnText: { color: c.primary, fontSize: 16, fontWeight: "700" },
+  verifyGate: { gap: 10, alignItems: "center" },
+  verifyGateText: {
+    color: c.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center",
+  },
+  verifyGateLink: {
+    color: c.primary,
+    fontSize: 14,
+    fontWeight: "700",
+    textDecorationLine: "underline",
+  },
   });

@@ -1,6 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { sendEmailVerification } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { useCallback, useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -9,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import AdBanner from "@/components/ad-banner";
 import { PressableScale } from "@/components/pressable-scale";
+import { refreshEmailVerified, resendVerificationEmail } from "@/lib/auth";
 import { auth, firestore, trackEvent } from "@/lib/firebase";
 import { registerForPushNotifications, scheduleActivityReminder } from "@/lib/notifications";
 import { Palette, useTheme, useThemedStyles } from "@/lib/theme";
@@ -62,12 +62,7 @@ export default function DashboardScreen() {
       if (opts?.silent) setRefreshing(true);
 
       // Refresh the cached verification flag so a just-verified user loses the banner.
-      try {
-        await user.reload();
-      } catch {
-        // Fall back to the cached flag if the reload fails.
-      }
-      setEmailVerified(user.emailVerified);
+      setEmailVerified(await refreshEmailVerified());
 
       // Fetch user profile and team details
       try {
@@ -121,11 +116,10 @@ export default function DashboardScreen() {
   };
 
   const resendVerification = async () => {
-    const current = auth.currentUser;
-    if (!current || resendState === "sending") return;
+    if (resendState === "sending") return;
     setResendState("sending");
     try {
-      await sendEmailVerification(current);
+      await resendVerificationEmail();
       trackEvent("verification_email_sent", { source: "dashboard_banner" });
       setResendState("sent");
     } catch (err) {
