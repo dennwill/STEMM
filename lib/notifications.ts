@@ -15,9 +15,9 @@ function getNotifications() {
 
 export async function registerForPushNotifications(): Promise<string | null> {
   if (isExpoGo) {
-    console.warn(
-      "Push notifications require a development build (not available in Expo Go)"
-    );
+    // Expected in Expo Go — push notifications need a development build.
+    // Return silently so the console stays clean; local reminders still work
+    // in a dev/production build.
     return null;
   }
 

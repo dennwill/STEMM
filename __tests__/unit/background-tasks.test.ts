@@ -22,7 +22,13 @@ jest.mock("firebase/app", () => ({
 
 jest.mock("firebase/auth", () => ({
   getAuth: jest.fn(() => ({ currentUser: null })),
+  initializeAuth: jest.fn(() => ({ currentUser: null })),
+  getReactNativePersistence: jest.fn(() => ({})),
 }));
+
+jest.mock("@react-native-async-storage/async-storage", () => ({ default: {} }), {
+  virtual: true,
+});
 
 jest.mock("firebase/analytics", () => ({
   isSupported: jest.fn().mockResolvedValue(false),
@@ -44,18 +50,30 @@ jest.mock("expo-task-manager", () => {
   };
 });
 
-jest.mock("expo-background-fetch", () => ({
-  registerTaskAsync: jest.fn().mockResolvedValue(undefined),
-  BackgroundFetchResult: {
-    NewData: 1,
-    NoData: 2,
-    Failed: 3,
+jest.mock(
+  "expo-background-task",
+  () => ({
+    registerTaskAsync: jest.fn().mockResolvedValue(undefined),
+    unregisterTaskAsync: jest.fn().mockResolvedValue(undefined),
+    BackgroundTaskResult: {
+      Success: 1,
+      Failed: 2,
+    },
+  }),
+  { virtual: true },
+);
+
+// Not Expo Go, so registerBackgroundSync runs its registration path.
+jest.mock("expo-constants", () => ({
+  __esModule: true,
+  default: {
+    executionEnvironment: "standalone",
   },
 }));
 
 // Import AFTER mocks
 import * as TaskManager from "expo-task-manager";
-import * as BackgroundFetch from "expo-background-fetch";
+import * as BackgroundTask from "expo-background-task";
 import * as backgroundTasks from "@/lib/background-tasks";
 
 // Access the captured task function
@@ -73,12 +91,10 @@ describe("background-tasks module", () => {
   it("registerBackgroundSync calls registerTaskAsync with correct options", async () => {
     await backgroundTasks.registerBackgroundSync();
 
-    expect(BackgroundFetch.registerTaskAsync).toHaveBeenCalledWith(
+    expect(BackgroundTask.registerTaskAsync).toHaveBeenCalledWith(
       "leaderboard-sync-task",
       expect.objectContaining({
-        minimumInterval: 15 * 60,
-        stopOnTerminate: false,
-        startOnBoot: true,
+        minimumInterval: 15,
       }),
     );
   });
@@ -86,7 +102,7 @@ describe("background-tasks module", () => {
   it("unregisterBackgroundSync calls unregisterTaskAsync", async () => {
     await backgroundTasks.unregisterBackgroundSync();
 
-    expect(TaskManager.unregisterTaskAsync).toHaveBeenCalledWith("leaderboard-sync-task");
+    expect(BackgroundTask.unregisterTaskAsync).toHaveBeenCalledWith("leaderboard-sync-task");
   });
 
   it("checkBackgroundSyncStatus returns true when task is registered", async () => {
@@ -115,28 +131,28 @@ describe("background task execution", () => {
     mockCollection.mockReset().mockReturnValue("teams-ref");
   });
 
-  it("returns NewData (1) when Firestore fetch succeeds", async () => {
+  it("returns Success (1) when Firestore fetch succeeds", async () => {
     mockGetDocs.mockResolvedValue({ size: 5 });
 
     const result = await taskFn();
 
-    expect(result).toBe(1); // BackgroundFetchResult.NewData
+    expect(result).toBe(1); // BackgroundTaskResult.Success
     expect(mockGetDocs).toHaveBeenCalled();
   });
 
-  it("returns Failed (3) when Firestore fetch throws a network error", async () => {
+  it("returns Failed (2) when Firestore fetch throws a network error", async () => {
     mockGetDocs.mockRejectedValue(new Error("Network error"));
 
     const result = await taskFn();
 
-    expect(result).toBe(3); // BackgroundFetchResult.Failed
+    expect(result).toBe(2); // BackgroundTaskResult.Failed
   });
 
-  it("returns Failed (3) when Firestore fetch throws a permission error", async () => {
+  it("returns Failed (2) when Firestore fetch throws a permission error", async () => {
     mockGetDocs.mockRejectedValue(new Error("permission-denied"));
 
     const result = await taskFn();
 
-    expect(result).toBe(3); // BackgroundFetchResult.Failed
+    expect(result).toBe(2); // BackgroundTaskResult.Failed
   });
 });

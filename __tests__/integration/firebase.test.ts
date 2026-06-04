@@ -14,11 +14,17 @@ jest.mock("firebase/app", () => ({
 
 jest.mock("firebase/auth", () => ({
   getAuth: jest.fn(() => ({ currentUser: null })),
+  initializeAuth: jest.fn(() => ({ currentUser: null })),
+  getReactNativePersistence: jest.fn(() => ({})),
 }));
 
 jest.mock("firebase/firestore", () => ({
   getFirestore: jest.fn(() => ({})),
 }));
+
+jest.mock("@react-native-async-storage/async-storage", () => ({ default: {} }), {
+  virtual: true,
+});
 
 const mockIsSupported = jest.fn();
 const mockGetAnalytics = jest.fn((_app?: unknown) => ({ app: { name: "[DEFAULT]" } }));

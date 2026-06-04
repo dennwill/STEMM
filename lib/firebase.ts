@@ -1,7 +1,14 @@
 import { getAnalytics, isSupported, logEvent, Analytics } from "firebase/analytics";
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, initializeAuth } from "firebase/auth";
+// `getReactNativePersistence` is only present in firebase/auth's React Native
+// export condition, so the umbrella web typings don't surface it. It resolves
+// correctly at runtime via Metro, so suppress the (web-typings-only) error.
+// @ts-expect-error -- exported from firebase/auth's RN build but not its web types
+import { getReactNativePersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -14,7 +21,17 @@ const firebaseConfig = {
 };
 
 export const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+
+// On native, initialise auth with AsyncStorage so the signed-in session
+// persists across app restarts. On web, the SDK's default browser persistence
+// already handles this, and getReactNativePersistence isn't applicable.
+export const auth =
+  Platform.OS === "web"
+    ? getAuth(app)
+    : initializeAuth(app, {
+        persistence: getReactNativePersistence(AsyncStorage),
+      });
+
 export const firestore = getFirestore(app);
 
 // Firebase Analytics — third Firebase technology used in the app.

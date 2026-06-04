@@ -68,6 +68,7 @@
       ],
       "expo-notifications",
       "expo-task-manager",
+      "expo-background-task",
       [
         "react-native-google-mobile-ads",
         {

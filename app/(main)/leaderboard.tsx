@@ -120,7 +120,9 @@ function PodiumSlot({
 
 function DropdownCaret({ open }: { open: boolean }) {
   const rotation = useSharedValue(0);
-  rotation.value = withSpring(open ? 180 : 0, SPRINGS.bouncy);
+  useEffect(() => {
+    rotation.value = withSpring(open ? 180 : 0, SPRINGS.bouncy);
+  }, [open, rotation]);
   const style = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],
   }));
