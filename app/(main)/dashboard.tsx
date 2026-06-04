@@ -454,7 +454,7 @@ const makeStyles = (c: Palette) =>
       borderRadius: 24,
       alignItems: "center",
       justifyContent: "center",
-      marginRight: 4,
+      marginRight: 14,
     },
     listContent: {
       flex: 1,

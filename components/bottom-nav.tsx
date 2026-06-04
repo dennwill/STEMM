@@ -103,7 +103,7 @@ export function BottomNav({ state, navigation, insets }: BottomTabBarProps) {
             style={[styles.centerCircle, dashActive && styles.centerCircleActive, circleStyle]}
           >
             <Ionicons
-              name="grid-outline"
+              name={dashActive ? "grid" : "grid-outline"}
               size={26}
               color={dashActive ? c.primary : c.muted}
             />

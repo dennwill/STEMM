@@ -295,12 +295,11 @@ type LevelsProps = {
   setLevels: Dispatch<SetStateAction<Record<TrialId, number>>>;
 };
 
-// The phone mic is uncalibrated, so the raw value is in dBFS (≈ -160…0).
-// Shift it into a friendly, classroom-sized relative scale for display.
-function meteringToDb(metering: number | undefined | null) {
-  if (metering == null || !Number.isFinite(metering)) return 0;
-  return Math.max(0, Math.min(120, Math.round(metering + 100)));
-}
+// The phone mic is uncalibrated and reports loudness in dBFS (≈ -160…0). Rather
+// than guess an absolute SPL, we calibrate on Start: sample the room's ambient
+// noise floor for a moment, treat that as 0 dB, then report how many dB each
+// sound rises above it. Readings therefore always begin at 0.
+const CALIBRATION_SAMPLES = 5; // ~0.5s of ambient at the 100ms metering interval
 
 function Recorder({ levels, setLevels }: LevelsProps) {
   const { palette: c } = useTheme();
@@ -311,16 +310,34 @@ function Recorder({ levels, setLevels }: LevelsProps) {
   const [running, setRunning] = useState(false);
   // Live/last reading shown for the current trial; seeded with any saved level.
   const [display, setDisplay] = useState(levels[TRIALS[0].id]);
+  const [calibrating, setCalibrating] = useState(false);
   const peakRef = useRef(0);
   const runningRef = useRef(false);
+  // Ambient noise floor captured at Start; readings are reported relative to it.
+  const baselineRef = useRef<number | null>(null);
+  const calibrationSamplesRef = useRef<number[]>([]);
 
   const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true });
   const recorderState = useAudioRecorderState(recorder, 100);
 
-  // Track the live reading and the peak while the meter runs.
+  // While running: first establish the calibrated zero from the room's ambient
+  // noise, then report each reading as dB above that baseline (peak-tracked).
   useEffect(() => {
     if (!running) return;
-    const db = meteringToDb(recorderState.metering);
+    const raw = recorderState.metering;
+    if (raw == null || !Number.isFinite(raw)) return;
+
+    if (baselineRef.current == null) {
+      const samples = calibrationSamplesRef.current;
+      samples.push(raw);
+      if (samples.length >= CALIBRATION_SAMPLES) {
+        baselineRef.current = samples.reduce((sum, s) => sum + s, 0) / samples.length;
+        setCalibrating(false);
+      }
+      return; // hold at 0 dB until calibration finishes
+    }
+
+    const db = Math.max(0, Math.min(120, Math.round(raw - baselineRef.current)));
     setDisplay(db);
     if (db > peakRef.current) peakRef.current = db;
   }, [recorderState.metering, running]);
@@ -342,6 +359,7 @@ function Recorder({ levels, setLevels }: LevelsProps) {
     if (running) {
       runningRef.current = false;
       setRunning(false);
+      setCalibrating(false);
       try {
         await recorder.stop();
       } catch {
@@ -359,6 +377,9 @@ function Recorder({ levels, setLevels }: LevelsProps) {
     }
     await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
     peakRef.current = 0;
+    baselineRef.current = null;
+    calibrationSamplesRef.current = [];
+    setCalibrating(true);
     setDisplay(0);
     await recorder.prepareToRecordAsync();
     recorder.record();
@@ -394,7 +415,7 @@ function Recorder({ levels, setLevels }: LevelsProps) {
 
       <View style={[styles.card, styles.timerCard]}>
         <Ionicons name="mic" size={40} color={c.primary} style={styles.meterIcon} />
-        <Text style={styles.timer}>{display > 0 ? `${display} dB` : "—"}</Text>
+        <Text style={styles.timer}>{running || display > 0 ? `${display} dB` : "—"}</Text>
         <Pressable
           style={[
             styles.outlineBtn,
@@ -408,12 +429,14 @@ function Recorder({ levels, setLevels }: LevelsProps) {
             {running ? "Stop Decibel Meter" : "Start Decibel Meter"}
           </Text>
         </Pressable>
-        {meteringSupported ? (
-          <Text style={styles.meterCaption}>Relative level (uncalibrated)</Text>
-        ) : (
+        {!meteringSupported ? (
           <Text style={styles.meterCaption}>
             Live metering isn&apos;t available on web — open the app on a phone.
           </Text>
+        ) : calibrating ? (
+          <Text style={styles.meterCaption}>Calibrating to the room… keep quiet.</Text>
+        ) : (
+          <Text style={styles.meterCaption}>dB above the room baseline (calibrated)</Text>
         )}
       </View>
 
@@ -606,6 +629,12 @@ function Discussion() {
           </View>
         ))}
       </View>
+
+      <Text style={styles.tableNote}>
+        Note: these are absolute sound levels. The Recorder is calibrated to your room — it
+        reads dB above the background noise, so its numbers start at 0 and will be lower than
+        the levels in this table.
+      </Text>
 
       <Text style={[styles.sectionHeading, styles.spacedTop]}>Why it matters:</Text>
       <Text style={styles.formulaCentered}>Every +10 dB ≈ twice as loud</Text>
@@ -824,6 +853,7 @@ const makeStyles = (c: Palette, ACCENT: WizardAccent) =>
   forceCell: { flex: 1, padding: 14, color: c.inputText, fontSize: 15, lineHeight: 21 },
   forceHeaderText: { fontWeight: "800" },
   formulaCentered: { color: c.inputText, fontSize: 17, textAlign: "center", paddingVertical: 6 },
+  tableNote: { color: c.muted, fontSize: 13, fontStyle: "italic", marginTop: 12, lineHeight: 19 },
 
   // Wizard footer
   footer: {
