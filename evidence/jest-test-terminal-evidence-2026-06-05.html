@@ -1,0 +1,156 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Jest Test Evidence - 2026-06-05</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #111827; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; }
+  .terminal { width: 1280px; min-height: 720px; background: #0b1020; color: #d1d5db; padding: 28px; box-sizing: border-box; }
+  .bar { height: 32px; display: flex; align-items: center; gap: 8px; color: #9ca3af; border-bottom: 1px solid #1f2937; padding-bottom: 16px; margin-bottom: 20px; }
+  .dot { width: 12px; height: 12px; border-radius: 999px; display: inline-block; }
+  .red { background: #ef4444; } .yellow { background: #f59e0b; } .green { background: #22c55e; }
+  .title { margin-left: 12px; font-size: 14px; }
+  .prompt { color: #93c5fd; white-space: pre-wrap; font-size: 15px; line-height: 1.45; }
+  pre { margin: 0; white-space: pre-wrap; font-size: 14px; line-height: 1.42; }
+  .pass { color: #86efac; font-weight: 700; }
+  .summary { color: #fef08a; font-weight: 700; }
+</style>
+</head>
+<body>
+  <main class="terminal">
+    <div class="bar"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span><span class="title">STEMM Jest Test Evidence - 2026-06-05 Asia/Jakarta</span></div>
+    <div class="prompt">PS C:\Users\denni\Documents\CodingProjects\STEMM&gt; npm test -- --runInBand</div>
+    <pre>
+
+&gt; stemm@1.0.0 test
+&gt; jest --runInBand
+
+<span class="pass">PASS __tests__/unit/background-tasks.test.ts</span>
+  ● Console
+
+    console.log
+      Background sync: fetched 5 teams from Firestore
+
+      at Object.log (lib/background-tasks.ts:18:13)
+
+    console.error
+      Background sync failed: Error: Network error
+          at Object.&lt;anonymous&gt; (C:\Users\denni\Documents\CodingProjects\STEMM\__tests__\unit\background-tasks.test.ts:144:35)
+          at Generator.next (&lt;anonymous&gt;)
+          at asyncGeneratorStep (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\@babel\runtime\helpers\asyncToGenerator.js:3:17)
+          at _next (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\@babel\runtime\helpers\asyncToGenerator.js:17:9)
+          at C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\@babel\runtime\helpers\asyncToGenerator.js:22:7
+          at new Promise (&lt;anonymous&gt;)
+          at Object.&lt;anonymous&gt; (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\@babel\runtime\helpers\asyncToGenerator.js:14:12)
+          at Promise.then.completed (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\utils.js:298:28)
+          at new Promise (&lt;anonymous&gt;)
+          at callAsyncCircusFn (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\utils.js:231:10)
+          at _callCircusTest (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\run.js:316:40)
+          at _runTest (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\run.js:252:3)
+          at _runTestsForDescribeBlock (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\run.js:126:9)
+          at _runTestsForDescribeBlock (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\run.js:121:9)
+          at run (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\run.js:71:3)
+          at runAndTransformResultsToJestFormat (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapterInit.js:122:21)
+          at jestAdapter (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapter.js:79:19)
+          at runTestInternal (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-runner\build\runTest.js:367:16)
+          at runTest (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-runner\build\runTest.js:444:34)
+
+      19 |     return BackgroundTask.BackgroundTaskResult.Success;
+      20 |   } catch (error) {
+    &gt; 21 |     console.error("Background sync failed:", error);
+         |             ^
+      22 |     return BackgroundTask.BackgroundTaskResult.Failed;
+      23 |   }
+      24 | });
+
+      at Object.error (lib/background-tasks.ts:21:13)
+          at Generator.throw (&lt;anonymous&gt;)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.error
+      Background sync failed: Error: permission-denied
+          at Object.&lt;anonymous&gt; (C:\Users\denni\Documents\CodingProjects\STEMM\__tests__\unit\background-tasks.test.ts:152:35)
+          at Generator.next (&lt;anonymous&gt;)
+          at asyncGeneratorStep (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\@babel\runtime\helpers\asyncToGenerator.js:3:17)
+          at _next (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\@babel\runtime\helpers\asyncToGenerator.js:17:9)
+          at C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\@babel\runtime\helpers\asyncToGenerator.js:22:7
+          at new Promise (&lt;anonymous&gt;)
+          at Object.&lt;anonymous&gt; (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\@babel\runtime\helpers\asyncToGenerator.js:14:12)
+          at Promise.then.completed (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\utils.js:298:28)
+          at new Promise (&lt;anonymous&gt;)
+          at callAsyncCircusFn (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\utils.js:231:10)
+          at _callCircusTest (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\run.js:316:40)
+          at _runTest (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\run.js:252:3)
+          at _runTestsForDescribeBlock (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\run.js:126:9)
+          at _runTestsForDescribeBlock (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\run.js:121:9)
+          at run (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\run.js:71:3)
+          at runAndTransformResultsToJestFormat (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapterInit.js:122:21)
+          at jestAdapter (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapter.js:79:19)
+          at runTestInternal (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-runner\build\runTest.js:367:16)
+          at runTest (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-runner\build\runTest.js:444:34)
+
+      19 |     return BackgroundTask.BackgroundTaskResult.Success;
+      20 |   } catch (error) {
+    &gt; 21 |     console.error("Background sync failed:", error);
+         |             ^
+      22 |     return BackgroundTask.BackgroundTaskResult.Failed;
+      23 |   }
+      24 | });
+
+      at Object.error (lib/background-tasks.ts:21:13)
+          at Generator.throw (&lt;anonymous&gt;)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+<span class="pass">PASS __tests__/unit/crud.test.ts</span>
+<span class="pass">PASS __tests__/e2e/app-config.test.ts</span>
+<span class="pass">PASS __tests__/integration/firebase.test.ts</span>
+<span class="pass">PASS __tests__/unit/discriminant.test.ts</span>
+<span class="pass">PASS __tests__/unit/points.test.ts</span>
+<span class="pass">PASS __tests__/integration/theme.test.ts</span>
+<span class="pass">PASS __tests__/unit/notifications.test.ts</span>
+  ● Console
+
+    console.warn
+      Notification permission not granted
+
+      39 |
+      40 |   if (finalStatus !== "granted") {
+    &gt; 41 |     console.warn("Notification permission not granted");
+         |             ^
+      42 |     return null;
+      43 |   }
+      44 |
+
+      at warn (lib/notifications.ts:41:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.warn
+      Notification permission not granted
+
+      39 |
+      40 |   if (finalStatus !== "granted") {
+    &gt; 41 |     console.warn("Notification permission not granted");
+         |             ^
+      42 |     return null;
+      43 |   }
+      44 |
+
+      at warn (lib/notifications.ts:41:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+<span class="pass">PASS __tests__/integration/errors.test.ts</span>
+
+<span class="summary">Test Suites: 9 passed, 9 total</span>
+<span class="summary">Tests:       108 passed, 108 total</span>
+<span class="summary">Snapshots:   0 total</span>
+<span class="summary">Time:        4.967 s, estimated 7 s</span>
+<span class="summary">Ran all test suites.</span>
+</pre>
+  </main>
+</body>
+</html>
