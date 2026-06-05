@@ -39,8 +39,7 @@ const TRIALS = [
     short: "Drop book",
     title: "Dropping a book",
     note: "Drop a book onto the table or floor.",
-    instruction:
-      "Hold the phone 30 cm from the noise. Start the meter, drop the book, then read the peak level.",
+    instruction: "Hold the phone 30 cm from the noise. Start the meter, drop the book, then read the peak level.",
   },
   {
     id: "talking",
@@ -96,9 +95,7 @@ export default function SoundScreen() {
         const sessionId = await createChallengeSession(db, {
           team_id: LOCAL_TEAM_ID,
           activity_id: LOCAL_ACTIVITY_IDS.sound,
-          prediction_text: prediction.choice
-            ? `${prediction.choice}: ${prediction.reason}`
-            : null,
+          prediction_text: prediction.choice ? `${prediction.choice}: ${prediction.reason}` : null,
           discussion_reflection: reflection || null,
         });
 
@@ -130,10 +127,7 @@ export default function SoundScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
             <Text style={styles.backArrow}>‹</Text>
@@ -144,10 +138,7 @@ export default function SoundScreen() {
         <View style={styles.stepHeader}>
           <View style={styles.progressTrack}>
             {TABS.map((t, i) => (
-              <View
-                key={t}
-                style={[styles.progressSeg, i <= step && styles.progressSegActive]}
-              />
+              <View key={t} style={[styles.progressSeg, i <= step && styles.progressSegActive]} />
             ))}
           </View>
           <Text style={styles.stepCount}>
@@ -162,9 +153,7 @@ export default function SoundScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {current === "Instructions" && <Instructions />}
-          {current === "Prediction" && (
-            <Prediction value={prediction} onChange={setPrediction} />
-          )}
+          {current === "Prediction" && <Prediction value={prediction} onChange={setPrediction} />}
           {current === "Recorder" && (
             <Recorder levels={levels} setLevels={setLevels} videos={videos} setVideos={setVideos} />
           )}
@@ -207,8 +196,8 @@ function Instructions() {
     <View style={styles.card}>
       <Text style={styles.blockTitle}>Overview</Text>
       <Text style={styles.body}>
-        Students measure and compare sound levels in different classroom activities, then map out
-        which areas are loud and which are quiet.
+        Students measure and compare sound levels in different classroom activities, then map out which areas are loud
+        and which are quiet.
       </Text>
 
       <Text style={styles.blockTitle}>Equipment</Text>
@@ -248,13 +237,7 @@ type PredictionValue = { choice: string; reason: string };
 // The four actions the user can predict between.
 const ACTION_OPTIONS = TRIALS.map((t) => t.short);
 
-function Prediction({
-  value,
-  onChange,
-}: {
-  value: PredictionValue;
-  onChange: (v: PredictionValue) => void;
-}) {
+function Prediction({ value, onChange }: { value: PredictionValue; onChange: (v: PredictionValue) => void }) {
   const { palette: c } = useTheme();
   const styles = useWizardStyles(makeStyles);
   return (
@@ -271,9 +254,7 @@ function Prediction({
               style={[styles.choiceChip, active && styles.choiceChipActive]}
               onPress={() => onChange({ ...value, choice: active ? "" : opt })}
             >
-              <Text style={[styles.choiceChipText, active && styles.choiceChipTextActive]}>
-                {opt}
-              </Text>
+              <Text style={[styles.choiceChipText, active && styles.choiceChipTextActive]}>{opt}</Text>
             </Pressable>
           );
         })}
@@ -409,9 +390,7 @@ function Recorder({ levels, setLevels, videos, setVideos }: LevelsProps) {
             style={[styles.subTab, trial === t.id && styles.subTabActive]}
             onPress={() => selectTrial(t.id)}
           >
-            <Text style={[styles.subTabLabel, trial === t.id && styles.subTabLabelActive]}>
-              {t.short}
-            </Text>
+            <Text style={[styles.subTabLabel, trial === t.id && styles.subTabLabelActive]}>{t.short}</Text>
           </Pressable>
         ))}
       </View>
@@ -421,20 +400,13 @@ function Recorder({ levels, setLevels, videos, setVideos }: LevelsProps) {
         <Text style={styles.instructionText}>{currentTrial.instruction}</Text>
       </View>
 
-      <VideoEvidence
-        value={videos[trial]}
-        onChange={(uri) => setVideos((prev) => ({ ...prev, [trial]: uri }))}
-      />
+      <VideoEvidence value={videos[trial]} onChange={(uri) => setVideos((prev) => ({ ...prev, [trial]: uri }))} />
 
       <View style={[styles.card, styles.timerCard]}>
         <Ionicons name="mic" size={40} color={c.primary} style={styles.meterIcon} />
         <Text style={styles.timer}>{running || display > 0 ? `${display} dB` : "—"}</Text>
         <Pressable
-          style={[
-            styles.outlineBtn,
-            running && styles.primaryBtn,
-            !meteringSupported && styles.btnDisabled,
-          ]}
+          style={[styles.outlineBtn, running && styles.primaryBtn, !meteringSupported && styles.btnDisabled]}
           onPress={meteringSupported ? toggleMeter : undefined}
           disabled={!meteringSupported}
         >
@@ -443,9 +415,7 @@ function Recorder({ levels, setLevels, videos, setVideos }: LevelsProps) {
           </Text>
         </Pressable>
         {!meteringSupported ? (
-          <Text style={styles.meterCaption}>
-            Live metering isn&apos;t available on web — open the app on a phone.
-          </Text>
+          <Text style={styles.meterCaption}>Live metering isn&apos;t available on web — open the app on a phone.</Text>
         ) : calibrating ? (
           <Text style={styles.meterCaption}>Calibrating to the room… keep quiet.</Text>
         ) : (
@@ -456,8 +426,7 @@ function Recorder({ levels, setLevels, videos, setVideos }: LevelsProps) {
       {recorded &&
         (nextTrial ? (
           <Text style={styles.switchHint}>
-            ✓ {currentTrial.short} level saved. Switch to {nextTrial.short} above to measure the next
-            action.
+            ✓ {currentTrial.short} level saved. Switch to {nextTrial.short} above to measure the next action.
           </Text>
         ) : (
           <Text style={styles.switchHint}>
@@ -520,15 +489,9 @@ function WriteUp({ levels, answers, setAnswers, reflection, setReflection }: Wri
                         <Pressable
                           key={opt}
                           style={[styles.choiceChip, active && styles.choiceChipActive]}
-                          onPress={() =>
-                            setAnswers((prev) => ({ ...prev, [key]: active ? "" : opt }))
-                          }
+                          onPress={() => setAnswers((prev) => ({ ...prev, [key]: active ? "" : opt }))}
                         >
-                          <Text
-                            style={[styles.choiceChipText, active && styles.choiceChipTextActive]}
-                          >
-                            {opt}
-                          </Text>
+                          <Text style={[styles.choiceChipText, active && styles.choiceChipTextActive]}>{opt}</Text>
                         </Pressable>
                       );
                     })}
@@ -542,9 +505,7 @@ function WriteUp({ levels, answers, setAnswers, reflection, setReflection }: Wri
                       multiline
                       textAlignVertical="top"
                     />
-                    {showMeasured && (
-                      <Text style={styles.fieldHint}>Measured in the Recorder — edit if needed.</Text>
-                    )}
+                    {showMeasured && <Text style={styles.fieldHint}>Measured in the Recorder — edit if needed.</Text>}
                   </>
                 )}
               </View>
@@ -555,8 +516,8 @@ function WriteUp({ levels, answers, setAnswers, reflection, setReflection }: Wri
 
       <View style={styles.card}>
         <Text style={styles.promptTitle}>
-          Were your predictions correct? Which action was the loudest, and which parts of the
-          classroom were the noisiest?
+          Were your predictions correct? Which action was the loudest, and which parts of the classroom were the
+          noisiest?
         </Text>
         <TextInput
           style={styles.textArea}
@@ -576,7 +537,15 @@ function WriteUp({ levels, answers, setAnswers, reflection, setReflection }: Wri
 /* Discussion                                                                 */
 /* -------------------------------------------------------------------------- */
 
-const DB_LEVELS: { level: string; sounds: string; risk: string; tint?: string }[] = [
+type TintKey = "caution" | "danger" | "severe";
+
+const DB_TINTS: Record<TintKey, { light: string; dark: string }> = {
+  caution: { light: "#FBF3B0", dark: "#4A3F12" }, // amber
+  danger: { light: "#F8C89B", dark: "#5A3115" }, // burnt orange
+  severe: { light: "#F4998E", dark: "#5A2420" }, // maroon red
+};
+
+const DB_LEVELS: { level: string; sounds: string; risk: string; tint?: TintKey }[] = [
   { level: "0–30 dB", sounds: "Whisper, quiet library", risk: "No risk" },
   { level: "30–60 dB", sounds: "Normal conversation, classroom noise", risk: "Safe for long periods" },
   { level: "60–85 dB", sounds: "Busy traffic, vacuum cleaner", risk: "Long exposure can cause fatigue" },
@@ -599,24 +568,25 @@ const DB_LEVELS: { level: string; sounds: string; risk: string; tint?: string }[
     level: "110–120 dB",
     sounds: "Siren close by, car horn at 1 m",
     risk: "Painful; immediate damage possible",
-    tint: "#FBF3B0",
+    tint: "caution",
   },
   {
     level: "120–130 dB",
     sounds: "Jet engine at close range",
     risk: "Immediate and severe hearing damage",
-    tint: "#F8C89B",
+    tint: "danger",
   },
   {
     level: "140+ dB",
     sounds: "Explosion, gunshot",
     risk: "Instant, permanent hearing damage",
-    tint: "#F4998E",
+    tint: "severe",
   },
 ];
 
 function Discussion() {
   const styles = useWizardStyles(makeStyles);
+  const { isDark } = useTheme();
   return (
     <View style={styles.card}>
       <Text style={styles.sectionHeading}>So why does this happen?</Text>
@@ -633,7 +603,7 @@ function Discussion() {
             style={[
               styles.forceRow,
               i === DB_LEVELS.length - 1 && styles.forceRowLast,
-              !!row.tint && { backgroundColor: row.tint },
+              row.tint && { backgroundColor: DB_TINTS[row.tint][isDark ? "dark" : "light"] },
             ]}
           >
             <Text style={styles.forceCell}>{row.level}</Text>
@@ -644,19 +614,18 @@ function Discussion() {
       </View>
 
       <Text style={styles.tableNote}>
-        Note: these are absolute sound levels. The Recorder is calibrated to your room — it
-        reads dB above the background noise, so its numbers start at 0 and will be lower than
-        the levels in this table.
+        Note: these are absolute sound levels. The Recorder is calibrated to your room — it reads dB above the
+        background noise, so its numbers start at 0 and will be lower than the levels in this table.
       </Text>
 
       <Text style={[styles.sectionHeading, styles.spacedTop]}>Why it matters:</Text>
       <Text style={styles.formulaCentered}>Every +10 dB ≈ twice as loud</Text>
 
       <Text style={[styles.body, styles.spacedTop]}>
-        Sound is measured in decibels (dB) on a logarithmic scale, so every extra 10 dB sounds
-        roughly twice as loud and carries far more energy. Louder sounds, and longer exposure to
-        them, do more damage to the tiny hair cells in your ears — and those cells don&apos;t grow
-        back. Measuring and reducing noise pollution helps protect your hearing.
+        Sound is measured in decibels (dB) on a logarithmic scale, so every extra 10 dB sounds roughly twice as loud and
+        carries far more energy. Louder sounds, and longer exposure to them, do more damage to the tiny hair cells in
+        your ears — and those cells don&apos;t grow back. Measuring and reducing noise pollution helps protect your
+        hearing.
       </Text>
     </View>
   );
@@ -692,209 +661,209 @@ function Numbered({ n, children }: { n: number; children: string }) {
 
 const makeStyles = (c: Palette, ACCENT: WizardAccent) =>
   StyleSheet.create({
-  safe: { flex: 1, backgroundColor: c.bg },
-  flex: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-  },
-  backBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
-  backArrow: { color: c.primary, fontSize: 34, fontWeight: "700", lineHeight: 36 },
-  title: { color: c.primary, fontSize: 22, fontWeight: "800", marginLeft: 8 },
+    safe: { flex: 1, backgroundColor: c.bg },
+    flex: { flex: 1 },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 12,
+    },
+    backBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
+    backArrow: { color: c.primary, fontSize: 34, fontWeight: "700", lineHeight: 36 },
+    title: { color: c.primary, fontSize: 22, fontWeight: "800", marginLeft: 8 },
 
-  // Step wizard header
-  stepHeader: { paddingHorizontal: 16, paddingBottom: 4 },
-  progressTrack: { flexDirection: "row", gap: 6 },
-  progressSeg: {
-    flex: 1,
-    height: 6,
-    borderRadius: 999,
-    backgroundColor: ACCENT.tabActive,
-  },
-  progressSegActive: { backgroundColor: c.primary },
-  stepCount: { color: c.muted, fontSize: 13, fontWeight: "600", marginTop: 10 },
-  stepName: { color: c.primary, fontSize: 20, fontWeight: "800", marginTop: 2 },
+    // Step wizard header
+    stepHeader: { paddingHorizontal: 16, paddingBottom: 4 },
+    progressTrack: { flexDirection: "row", gap: 6 },
+    progressSeg: {
+      flex: 1,
+      height: 6,
+      borderRadius: 999,
+      backgroundColor: ACCENT.tabActive,
+    },
+    progressSegActive: { backgroundColor: c.primary },
+    stepCount: { color: c.muted, fontSize: 13, fontWeight: "600", marginTop: 10 },
+    stepName: { color: c.primary, fontSize: 20, fontWeight: "800", marginTop: 2 },
 
-  scrollContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 },
+    scrollContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 },
 
-  card: {
-    backgroundColor: c.white,
-    borderRadius: 16,
-    padding: 20,
-    boxShadow: "0px 1px 6px rgba(0, 0, 0, 0.05)",
-  },
+    card: {
+      backgroundColor: c.white,
+      borderRadius: 16,
+      padding: 20,
+      boxShadow: "0px 1px 6px rgba(0, 0, 0, 0.05)",
+    },
 
-  blockTitle: {
-    color: c.inputText,
-    fontSize: 18,
-    fontWeight: "800",
-    marginTop: 18,
-    marginBottom: 6,
-  },
-  body: { color: c.inputText, fontSize: 16, lineHeight: 25 },
+    blockTitle: {
+      color: c.inputText,
+      fontSize: 18,
+      fontWeight: "800",
+      marginTop: 18,
+      marginBottom: 6,
+    },
+    body: { color: c.inputText, fontSize: 16, lineHeight: 25 },
 
-  listItem: { flexDirection: "row", marginTop: 7, paddingRight: 8 },
-  listMarker: { color: c.inputText, fontSize: 16, lineHeight: 24, width: 26, paddingLeft: 4 },
-  listText: { color: c.inputText, fontSize: 16, lineHeight: 24, flex: 1 },
+    listItem: { flexDirection: "row", marginTop: 7, paddingRight: 8 },
+    listMarker: { color: c.inputText, fontSize: 16, lineHeight: 24, width: 26, paddingLeft: 4 },
+    listText: { color: c.inputText, fontSize: 16, lineHeight: 24, flex: 1 },
 
-  // Prediction
-  promptTitle: { color: c.inputText, fontSize: 17, fontWeight: "700", marginBottom: 14 },
-  predictLead: { color: c.inputText, fontSize: 16, lineHeight: 24, marginBottom: 10 },
-  choiceRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 14 },
-  choiceChip: {
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: ACCENT.border,
-    backgroundColor: c.white,
-  },
-  choiceChipActive: { backgroundColor: ACCENT.tabActive, borderColor: c.primary },
-  choiceChipText: { color: c.inputText, fontSize: 15, fontWeight: "600" },
-  choiceChipTextActive: { color: c.primary, fontWeight: "700" },
-  spacedTop: { marginTop: 24 },
-  textArea: {
-    borderWidth: 1,
-    borderColor: ACCENT.border,
-    borderRadius: 10,
-    minHeight: 150,
-    padding: 16,
-    color: c.inputText,
-    fontSize: 16,
-    lineHeight: 23,
-  },
+    // Prediction
+    promptTitle: { color: c.inputText, fontSize: 17, fontWeight: "700", marginBottom: 14 },
+    predictLead: { color: c.inputText, fontSize: 16, lineHeight: 24, marginBottom: 10 },
+    choiceRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 14 },
+    choiceChip: {
+      paddingVertical: 10,
+      paddingHorizontal: 18,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: ACCENT.border,
+      backgroundColor: c.white,
+    },
+    choiceChipActive: { backgroundColor: ACCENT.tabActive, borderColor: c.primary },
+    choiceChipText: { color: c.inputText, fontSize: 15, fontWeight: "600" },
+    choiceChipTextActive: { color: c.primary, fontWeight: "700" },
+    spacedTop: { marginTop: 24 },
+    textArea: {
+      borderWidth: 1,
+      borderColor: ACCENT.border,
+      borderRadius: 10,
+      minHeight: 150,
+      padding: 16,
+      color: c.inputText,
+      fontSize: 16,
+      lineHeight: 23,
+    },
 
-  // Recorder
-  subTabBar: {
-    flexDirection: "row",
-    backgroundColor: c.white,
-    borderRadius: 999,
-    padding: 4,
-    marginBottom: 20,
-    boxShadow: "0px 1px 4px rgba(0, 0, 0, 0.06)",
-  },
-  subTab: {
-    flex: 1,
-    paddingVertical: 11,
-    paddingHorizontal: 4,
-    borderRadius: 999,
-    alignItems: "center",
-  },
-  subTabActive: { backgroundColor: ACCENT.tabActive },
-  subTabLabel: { color: c.inputText, fontSize: 13, fontWeight: "600" },
-  subTabLabelActive: { color: c.primary, fontWeight: "700" },
-  instructionBox: {
-    backgroundColor: ACCENT.softHeader,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-  },
-  instructionTitle: { color: c.primary, fontSize: 15, fontWeight: "800", marginBottom: 4 },
-  instructionText: { color: c.inputText, fontSize: 14, lineHeight: 20 },
-  switchHint: {
-    color: c.primary,
-    fontSize: 14,
-    fontWeight: "600",
-    textAlign: "center",
-    marginTop: 16,
-    lineHeight: 20,
-  },
-  timerCard: { marginTop: 20, alignItems: "center" },
-  meterIcon: { marginBottom: 12 },
-  timer: { color: c.inputText, fontSize: 56, fontWeight: "800", marginBottom: 20 },
-  meterCaption: { color: c.muted, fontSize: 13, marginTop: 14, textAlign: "center" },
+    // Recorder
+    subTabBar: {
+      flexDirection: "row",
+      backgroundColor: c.white,
+      borderRadius: 999,
+      padding: 4,
+      marginBottom: 20,
+      boxShadow: "0px 1px 4px rgba(0, 0, 0, 0.06)",
+    },
+    subTab: {
+      flex: 1,
+      paddingVertical: 11,
+      paddingHorizontal: 4,
+      borderRadius: 999,
+      alignItems: "center",
+    },
+    subTabActive: { backgroundColor: ACCENT.tabActive },
+    subTabLabel: { color: c.inputText, fontSize: 13, fontWeight: "600" },
+    subTabLabelActive: { color: c.primary, fontWeight: "700" },
+    instructionBox: {
+      backgroundColor: ACCENT.softHeader,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 20,
+    },
+    instructionTitle: { color: c.primary, fontSize: 15, fontWeight: "800", marginBottom: 4 },
+    instructionText: { color: c.inputText, fontSize: 14, lineHeight: 20 },
+    switchHint: {
+      color: c.primary,
+      fontSize: 14,
+      fontWeight: "600",
+      textAlign: "center",
+      marginTop: 16,
+      lineHeight: 20,
+    },
+    timerCard: { marginTop: 20, alignItems: "center" },
+    meterIcon: { marginBottom: 12 },
+    timer: { color: c.inputText, fontSize: 56, fontWeight: "800", marginBottom: 20 },
+    meterCaption: { color: c.muted, fontSize: 13, marginTop: 14, textAlign: "center" },
 
-  primaryBtn: {
-    backgroundColor: c.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 36,
-    alignItems: "center",
-    alignSelf: "center",
-  },
-  primaryBtnText: { color: c.white, fontSize: 17, fontWeight: "700" },
-  outlineBtn: {
-    backgroundColor: c.white,
-    borderWidth: 1,
-    borderColor: ACCENT.border,
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 36,
-    alignItems: "center",
-    alignSelf: "center",
-  },
-  outlineBtnText: { color: c.inputText, fontSize: 17, fontWeight: "700" },
-  btnDisabled: { opacity: 0.5 },
+    primaryBtn: {
+      backgroundColor: c.primary,
+      borderRadius: 12,
+      paddingVertical: 16,
+      paddingHorizontal: 36,
+      alignItems: "center",
+      alignSelf: "center",
+    },
+    primaryBtnText: { color: c.white, fontSize: 17, fontWeight: "700" },
+    outlineBtn: {
+      backgroundColor: c.white,
+      borderWidth: 1,
+      borderColor: ACCENT.border,
+      borderRadius: 12,
+      paddingVertical: 16,
+      paddingHorizontal: 36,
+      alignItems: "center",
+      alignSelf: "center",
+    },
+    outlineBtnText: { color: c.inputText, fontSize: 17, fontWeight: "700" },
+    btnDisabled: { opacity: 0.5 },
 
-  // Write-Up (stacked action cards)
-  stack: { gap: 16 },
-  actionCard: {
-    backgroundColor: c.white,
-    borderRadius: 16,
-    padding: 20,
-    boxShadow: "0px 1px 6px rgba(0, 0, 0, 0.05)",
-  },
-  actionTitle: { color: c.primary, fontSize: 18, fontWeight: "800" },
-  actionNote: { color: c.muted, fontSize: 14, marginTop: 4, lineHeight: 20 },
-  field: { marginTop: 16 },
-  fieldLabel: { color: c.inputText, fontSize: 15, fontWeight: "600", marginBottom: 8, lineHeight: 21 },
-  fieldInput: {
-    borderWidth: 1,
-    borderColor: ACCENT.border,
-    borderRadius: 10,
-    minHeight: 52,
-    padding: 14,
-    color: c.inputText,
-    fontSize: 16,
-    lineHeight: 22,
-  },
-  fieldHint: { color: c.muted, fontSize: 13, fontStyle: "italic", marginTop: 6 },
+    // Write-Up (stacked action cards)
+    stack: { gap: 16 },
+    actionCard: {
+      backgroundColor: c.white,
+      borderRadius: 16,
+      padding: 20,
+      boxShadow: "0px 1px 6px rgba(0, 0, 0, 0.05)",
+    },
+    actionTitle: { color: c.primary, fontSize: 18, fontWeight: "800" },
+    actionNote: { color: c.muted, fontSize: 14, marginTop: 4, lineHeight: 20 },
+    field: { marginTop: 16 },
+    fieldLabel: { color: c.inputText, fontSize: 15, fontWeight: "600", marginBottom: 8, lineHeight: 21 },
+    fieldInput: {
+      borderWidth: 1,
+      borderColor: ACCENT.border,
+      borderRadius: 10,
+      minHeight: 52,
+      padding: 14,
+      color: c.inputText,
+      fontSize: 16,
+      lineHeight: 22,
+    },
+    fieldHint: { color: c.muted, fontSize: 13, fontStyle: "italic", marginTop: 6 },
 
-  // Discussion
-  sectionHeading: { color: c.primary, fontSize: 23, fontWeight: "800", marginBottom: 18 },
-  forceTable: { borderWidth: 1, borderColor: ACCENT.border, borderRadius: 8, overflow: "hidden" },
-  forceRow: {
-    flexDirection: "row",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: ACCENT.border,
-  },
-  forceRowLast: { borderBottomWidth: 0 },
-  forceHeaderRow: { backgroundColor: ACCENT.softHeader },
-  forceCell: { flex: 1, padding: 14, color: c.inputText, fontSize: 15, lineHeight: 21 },
-  forceHeaderText: { fontWeight: "800" },
-  formulaCentered: { color: c.inputText, fontSize: 17, textAlign: "center", paddingVertical: 6 },
-  tableNote: { color: c.muted, fontSize: 13, fontStyle: "italic", marginTop: 12, lineHeight: 19 },
+    // Discussion
+    sectionHeading: { color: c.primary, fontSize: 23, fontWeight: "800", marginBottom: 18 },
+    forceTable: { borderWidth: 1, borderColor: ACCENT.border, borderRadius: 8, overflow: "hidden" },
+    forceRow: {
+      flexDirection: "row",
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: ACCENT.border,
+    },
+    forceRowLast: { borderBottomWidth: 0 },
+    forceHeaderRow: { backgroundColor: ACCENT.softHeader },
+    forceCell: { flex: 1, padding: 14, color: c.inputText, fontSize: 15, lineHeight: 21 },
+    forceHeaderText: { fontWeight: "800" },
+    formulaCentered: { color: c.inputText, fontSize: 17, textAlign: "center", paddingVertical: 6 },
+    tableNote: { color: c.muted, fontSize: 13, fontStyle: "italic", marginTop: 12, lineHeight: 19 },
 
-  // Wizard footer
-  footer: {
-    flexDirection: "row",
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: ACCENT.border,
-    backgroundColor: c.bg,
-  },
-  footerSpacer: { flex: 1 },
-  footerBack: {
-    flex: 1,
-    backgroundColor: c.white,
-    borderWidth: 1,
-    borderColor: ACCENT.border,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  footerBackText: { color: c.primary, fontSize: 17, fontWeight: "700" },
-  footerNext: {
-    flex: 1,
-    backgroundColor: c.primary,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
+    // Wizard footer
+    footer: {
+      flexDirection: "row",
+      gap: 12,
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 12,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: ACCENT.border,
+      backgroundColor: c.bg,
+    },
+    footerSpacer: { flex: 1 },
+    footerBack: {
+      flex: 1,
+      backgroundColor: c.white,
+      borderWidth: 1,
+      borderColor: ACCENT.border,
+      borderRadius: 14,
+      paddingVertical: 16,
+      alignItems: "center",
+    },
+    footerBackText: { color: c.primary, fontSize: 17, fontWeight: "700" },
+    footerNext: {
+      flex: 1,
+      backgroundColor: c.primary,
+      borderRadius: 14,
+      paddingVertical: 16,
+      alignItems: "center",
+    },
   });
