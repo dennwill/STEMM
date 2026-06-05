@@ -1,5 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { Dispatch, SetStateAction, useState } from "react";
@@ -19,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { createChallengeSession, createDataPoint } from "@/lib/crud";
 import { LOCAL_ACTIVITY_IDS, LOCAL_TEAM_ID } from "@/lib/db";
 import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
+import { VideoEvidence } from "@/components/VideoEvidence";
 import { Palette, useTheme, useWizardStyles, WizardAccent } from "@/lib/theme";
 
 const TABS = ["Instructions", "Prediction", "Recorder", "Write-Up", "Discussion"] as const;
@@ -295,27 +294,8 @@ type VideosProps = {
 };
 
 function Recorder({ videos, setVideos }: VideosProps) {
-  const { palette: c } = useTheme();
   const styles = useWizardStyles(makeStyles);
   const [trial, setTrial] = useState<TrialId>(TRIALS[0].id);
-  const [names, setNames] = useState<Record<string, string>>({});
-
-  async function pickVideo() {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert("Photos access needed", "Allow access to your photos to attach a video.");
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["videos"],
-      quality: 1,
-    });
-    if (!result.canceled && result.assets.length > 0) {
-      const asset = result.assets[0];
-      setVideos((prev) => ({ ...prev, [trial]: asset.uri }));
-      setNames((prev) => ({ ...prev, [trial]: asset.fileName ?? "" }));
-    }
-  }
 
   const trialIndex = TRIALS.findIndex((t) => t.id === trial);
   const currentTrial = TRIALS[trialIndex];
@@ -343,17 +323,11 @@ function Recorder({ videos, setVideos }: VideosProps) {
         <Text style={styles.instructionText}>{currentTrial.instruction}</Text>
       </View>
 
-      <View style={[styles.card, styles.mediaCard]}>
-        <Ionicons name="videocam" size={42} color={c.primary} style={styles.mediaIcon} />
-        <Pressable style={styles.primaryBtn} onPress={pickVideo}>
-          <Text style={styles.primaryBtnText}>{attached ? "Replace Video" : "Upload Video"}</Text>
-        </Pressable>
-        {attached && (
-          <Text style={styles.videoName} numberOfLines={1}>
-            {names[trial] || "Video attached"}
-          </Text>
-        )}
-      </View>
+      <VideoEvidence
+        value={videos[trial]}
+        onChange={(uri) => setVideos((prev) => ({ ...prev, [trial]: uri }))}
+        label="Upload Video"
+      />
 
       {attached &&
         (nextTrial ? (
@@ -625,10 +599,6 @@ const makeStyles = (c: Palette, ACCENT: WizardAccent) =>
     marginTop: 16,
     lineHeight: 20,
   },
-  mediaCard: { marginTop: 20, alignItems: "center", paddingVertical: 32 },
-  mediaIcon: { marginBottom: 18 },
-  videoName: { color: c.muted, fontSize: 14, marginTop: 16, textAlign: "center", maxWidth: "100%" },
-
   primaryBtn: {
     backgroundColor: c.primary,
     borderRadius: 12,

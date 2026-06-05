@@ -22,6 +22,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { VideoEvidence } from "@/components/VideoEvidence";
 import { createChallengeSession, createDataPoint } from "@/lib/crud";
 import { LOCAL_ACTIVITY_IDS, LOCAL_TEAM_ID } from "@/lib/db";
 import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
@@ -77,6 +78,9 @@ export default function SoundScreen() {
   const [reflection, setReflection] = useState("");
   const [levels, setLevels] = useState<Record<TrialId, number>>(
     Object.fromEntries(TRIALS.map((t) => [t.id, 0])) as Record<TrialId, number>,
+  );
+  const [videos, setVideos] = useState<Record<TrialId, string>>(
+    Object.fromEntries(TRIALS.map((t) => [t.id, ""])) as Record<TrialId, string>,
   );
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
@@ -161,7 +165,9 @@ export default function SoundScreen() {
           {current === "Prediction" && (
             <Prediction value={prediction} onChange={setPrediction} />
           )}
-          {current === "Recorder" && <Recorder levels={levels} setLevels={setLevels} />}
+          {current === "Recorder" && (
+            <Recorder levels={levels} setLevels={setLevels} videos={videos} setVideos={setVideos} />
+          )}
           {current === "Write-Up" && (
             <WriteUp
               levels={levels}
@@ -293,6 +299,8 @@ function Prediction({
 type LevelsProps = {
   levels: Record<TrialId, number>;
   setLevels: Dispatch<SetStateAction<Record<TrialId, number>>>;
+  videos: Record<TrialId, string>;
+  setVideos: Dispatch<SetStateAction<Record<TrialId, string>>>;
 };
 
 // The phone mic is uncalibrated and reports loudness in dBFS (≈ -160…0). Rather
@@ -301,7 +309,7 @@ type LevelsProps = {
 // sound rises above it. Readings therefore always begin at 0.
 const CALIBRATION_SAMPLES = 5; // ~0.5s of ambient at the 100ms metering interval
 
-function Recorder({ levels, setLevels }: LevelsProps) {
+function Recorder({ levels, setLevels, videos, setVideos }: LevelsProps) {
   const { palette: c } = useTheme();
   const styles = useWizardStyles(makeStyles);
   const meteringSupported = Platform.OS !== "web";
@@ -412,6 +420,11 @@ function Recorder({ levels, setLevels }: LevelsProps) {
         <Text style={styles.instructionTitle}>{currentTrial.title}</Text>
         <Text style={styles.instructionText}>{currentTrial.instruction}</Text>
       </View>
+
+      <VideoEvidence
+        value={videos[trial]}
+        onChange={(uri) => setVideos((prev) => ({ ...prev, [trial]: uri }))}
+      />
 
       <View style={[styles.card, styles.timerCard]}>
         <Ionicons name="mic" size={40} color={c.primary} style={styles.meterIcon} />

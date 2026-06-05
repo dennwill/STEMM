@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { VideoEvidence } from "@/components/VideoEvidence";
 import { createChallengeSession, createDataPoint } from "@/lib/crud";
 import { LOCAL_ACTIVITY_IDS, LOCAL_TEAM_ID } from "@/lib/db";
 import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
@@ -44,6 +45,9 @@ export default function EarthquakeScreen() {
   // steps doesn't unmount and discard what the user has entered.
   const [prediction, setPrediction] = useState<PredictionValue>({ choice: "", reason: "" });
   const [reflection, setReflection] = useState("");
+  // The earthquake recorder is a single standalone vibration test (no trials),
+  // so its evidence video is one slot rather than a per-trial map.
+  const [video, setVideo] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
   const current = TABS[step];
@@ -130,7 +134,7 @@ export default function EarthquakeScreen() {
           {current === "Prediction" && (
             <Prediction value={prediction} onChange={setPrediction} />
           )}
-          {current === "Recorder" && <Recorder />}
+          {current === "Recorder" && <Recorder video={video} setVideo={setVideo} />}
           {current === "Write-Up" && (
             <WriteUp
               answers={answers}
@@ -262,7 +266,13 @@ function Prediction({
 /* Recorder                                                                   */
 /* -------------------------------------------------------------------------- */
 
-function Recorder() {
+function Recorder({
+  video,
+  setVideo,
+}: {
+  video: string;
+  setVideo: Dispatch<SetStateAction<string>>;
+}) {
   const { palette: c } = useTheme();
   const styles = useWizardStyles(makeStyles);
   const [vibrating, setVibrating] = useState(false);
@@ -383,6 +393,8 @@ function Recorder() {
           </Text>
         )}
       </View>
+
+      <VideoEvidence value={video} onChange={setVideo} />
     </View>
   );
 }

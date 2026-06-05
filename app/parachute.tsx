@@ -1,4 +1,3 @@
-import { FontAwesome5 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
@@ -19,6 +18,7 @@ import {
   createChallengeSession,
   createDataPoint,
 } from "@/lib/crud";
+import { VideoEvidence } from "@/components/VideoEvidence";
 import { LOCAL_ACTIVITY_IDS, LOCAL_TEAM_ID } from "@/lib/db";
 import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
 import { Palette, useTheme, useWizardStyles, WizardAccent } from "@/lib/theme";
@@ -74,6 +74,9 @@ export default function ParachuteScreen() {
   const [reflection, setReflection] = useState("");
   const [times, setTimes] = useState<Record<TrialId, number>>(
     Object.fromEntries(TRIALS.map((t) => [t.id, 0])) as Record<TrialId, number>,
+  );
+  const [videos, setVideos] = useState<Record<TrialId, string>>(
+    Object.fromEntries(TRIALS.map((t) => [t.id, ""])) as Record<TrialId, string>,
   );
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
@@ -159,7 +162,9 @@ export default function ParachuteScreen() {
           {current === "Prediction" && (
             <Prediction value={prediction} onChange={setPrediction} />
           )}
-          {current === "Recorder" && <Recorder times={times} setTimes={setTimes} />}
+          {current === "Recorder" && (
+            <Recorder times={times} setTimes={setTimes} videos={videos} setVideos={setVideos} />
+          )}
           {current === "Write-Up" && (
             <WriteUp
               times={times}
@@ -307,10 +312,11 @@ function Prediction({
 type TimesProps = {
   times: Record<TrialId, number>;
   setTimes: Dispatch<SetStateAction<Record<TrialId, number>>>;
+  videos: Record<TrialId, string>;
+  setVideos: Dispatch<SetStateAction<Record<TrialId, string>>>;
 };
 
-function Recorder({ times, setTimes }: TimesProps) {
-  const { palette: c } = useTheme();
+function Recorder({ times, setTimes, videos, setVideos }: TimesProps) {
   const styles = useWizardStyles(makeStyles);
   const [trial, setTrial] = useState<TrialId>(TRIALS[0].id);
   const [running, setRunning] = useState(false);
@@ -372,13 +378,10 @@ function Recorder({ times, setTimes }: TimesProps) {
         <Text style={styles.instructionText}>{currentTrial.instruction}</Text>
       </View>
 
-      <Pressable
-        style={styles.uploadRow}
-        onPress={() => Alert.alert("Upload Video", "Video upload is coming soon.")}
-      >
-        <FontAwesome5 name="film" size={16} color={c.primary} />
-        <Text style={styles.uploadRowText}>Upload video</Text>
-      </Pressable>
+      <VideoEvidence
+        value={videos[trial]}
+        onChange={(uri) => setVideos((prev) => ({ ...prev, [trial]: uri }))}
+      />
 
       <View style={[styles.card, styles.timerCard]}>
         <Text style={styles.timer}>{formatTime(elapsed)}</Text>

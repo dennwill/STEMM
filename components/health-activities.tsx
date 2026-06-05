@@ -1,4 +1,3 @@
-import { FontAwesome5 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { Dispatch, ReactElement, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
@@ -15,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { VideoEvidence } from "@/components/VideoEvidence";
 import { createChallengeSession, createDataPoint } from "@/lib/crud";
 import { LOCAL_ACTIVITY_IDS, LOCAL_TEAM_ID } from "@/lib/db";
 import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
@@ -88,6 +88,9 @@ type MeasurementProps<TrialId extends string, Measurement> = {
   measurements: Record<TrialId, Measurement>;
   setMeasurements: Dispatch<SetStateAction<Record<TrialId, Measurement>>>;
   setRecorderBusy: Dispatch<SetStateAction<boolean>>;
+  // Per-trial evidence video URIs ("" when none attached for that trial).
+  videos: Record<TrialId, string>;
+  setVideos: Dispatch<SetStateAction<Record<TrialId, string>>>;
 };
 
 type WriteUpStateProps<TrialId extends string, Measurement> = MeasurementProps<
@@ -125,6 +128,9 @@ function ActivityShell<TrialId extends string, Measurement>({
   const [reflection, setReflection] = useState("");
   const [measurements, setMeasurements] = useState<Record<TrialId, Measurement>>(
     createInitialMeasurements,
+  );
+  const [videos, setVideos] = useState<Record<TrialId, string>>(
+    () => Object.fromEntries(trials.map((t) => [t.id, ""])) as Record<TrialId, string>,
   );
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [recorderBusy, setRecorderBusy] = useState(false);
@@ -232,13 +238,15 @@ function ActivityShell<TrialId extends string, Measurement>({
             />
           )}
           {current === "Recorder" &&
-            renderRecorder({ trials, measurements, setMeasurements, setRecorderBusy })}
+            renderRecorder({ trials, measurements, setMeasurements, setRecorderBusy, videos, setVideos })}
           {current === "Write-Up" &&
             renderWriteUp({
               trials,
               measurements,
               setMeasurements,
               setRecorderBusy,
+              videos,
+              setVideos,
               answers,
               setAnswers,
               reflection,
@@ -261,20 +269,6 @@ function ActivityShell<TrialId extends string, Measurement>({
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
-  );
-}
-
-function UploadEvidenceRow({ label = "Upload video" }: { label?: string }) {
-  const { palette: c } = useTheme();
-  const styles = useActivityStyles();
-  return (
-    <Pressable
-      style={styles.uploadRow}
-      onPress={() => Alert.alert(label, "Upload is coming soon.")}
-    >
-      <FontAwesome5 name="film" size={16} color={c.primary} />
-      <Text style={styles.uploadRowText}>{label}</Text>
-    </Pressable>
   );
 }
 
@@ -629,6 +623,8 @@ function PerformanceRecorder({
   measurements,
   setMeasurements,
   setRecorderBusy,
+  videos,
+  setVideos,
 }: MeasurementProps<PerformanceTrialId, PerformanceMeasurement>) {
   const styles = useActivityStyles();
   const [trial, setTrial] = useState<PerformanceTrialId>(trials[0].id);
@@ -712,7 +708,10 @@ function PerformanceRecorder({
         <Text style={styles.instructionText}>{currentTrial.instruction}</Text>
       </View>
 
-      <UploadEvidenceRow />
+      <VideoEvidence
+        value={videos[trial]}
+        onChange={(uri) => setVideos((p) => ({ ...p, [trial]: uri }))}
+      />
 
       <View style={[styles.card, styles.timerCard]}>
         <Text style={styles.timer}>{formatTime(elapsed)}</Text>
@@ -887,6 +886,8 @@ function ReactionRecorder({
   measurements,
   setMeasurements,
   setRecorderBusy,
+  videos,
+  setVideos,
 }: MeasurementProps<ReactionTrialId, ReactionMeasurement>) {
   const styles = useActivityStyles();
   const [trial, setTrial] = useState<ReactionTrialId>(trials[0].id);
@@ -982,7 +983,10 @@ function ReactionRecorder({
         <Text style={styles.instructionText}>{currentTrial.instruction}</Text>
       </View>
 
-      <UploadEvidenceRow />
+      <VideoEvidence
+        value={videos[trial]}
+        onChange={(uri) => setVideos((p) => ({ ...p, [trial]: uri }))}
+      />
 
       <View style={[styles.card, styles.timerCard]}>
         <Text style={styles.reactionMeta}>Round {Math.min(rounds.length + 1, 5)} of 5</Text>
@@ -1206,6 +1210,8 @@ function BreathingRecorder({
   measurements,
   setMeasurements,
   setRecorderBusy,
+  videos,
+  setVideos,
 }: MeasurementProps<BreathingTrialId, BreathingMeasurement>) {
   const styles = useActivityStyles();
   const breathingTrials = trials as readonly BreathingTrial[];
@@ -1296,7 +1302,10 @@ function BreathingRecorder({
         <Text style={styles.instructionText}>{currentTrial.instruction}</Text>
       </View>
 
-      <UploadEvidenceRow />
+      <VideoEvidence
+        value={videos[trial]}
+        onChange={(uri) => setVideos((p) => ({ ...p, [trial]: uri }))}
+      />
 
       <View style={[styles.card, styles.timerCard]}>
         <View style={[styles.breathCircle, getBreathCircleStyle(phase.label, styles)]}>
