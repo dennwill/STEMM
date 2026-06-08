@@ -47,21 +47,7 @@ export default function TeamScreen() {
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
   const hasLoaded = useRef(false);
 
-  // Reload whenever the tab regains focus so edits made on the edit screen
-  // show up on return. The first load shows the spinner; later focus refreshes
-  // are silent to avoid flashing the loading state on every tab switch.
-  useFocusEffect(
-    useCallback(() => {
-      if (!user) {
-        router.replace("/(auth)/login" as any);
-        return;
-      }
-      loadTeam(hasLoaded.current);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user?.uid]),
-  );
-
-  async function loadTeam(silent = false) {
+  const loadTeam = useCallback(async (silent = false) => {
     if (!user) return;
     if (silent) setRefreshing(true);
     else setLoading(true);
@@ -127,9 +113,22 @@ export default function TeamScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }
+  }, [user]);
 
-  const handleRefresh = useCallback(() => loadTeam(true), []);
+  // Reload whenever the tab regains focus so edits made on the edit screen
+  // show up on return. The first load shows the spinner; later focus refreshes
+  // are silent to avoid flashing the loading state on every tab switch.
+  useFocusEffect(
+    useCallback(() => {
+      if (!user) {
+        router.replace("/(auth)/login" as any);
+        return;
+      }
+      loadTeam(hasLoaded.current);
+    }, [loadTeam, router, user]),
+  );
+
+  const handleRefresh = useCallback(() => loadTeam(true), [loadTeam]);
 
   async function logout() {
     await signOut(auth);
