@@ -1,6 +1,9 @@
+import { useEventListener } from "expo";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { useSQLiteContext } from "expo-sqlite";
-import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -18,10 +21,10 @@ import {
   createChallengeSession,
   createDataPoint,
 } from "@/lib/crud";
-import { VideoEvidence } from "@/components/VideoEvidence";
 import { ParachuteDiagram } from "@/components/ActivityDiagrams";
 import { LOCAL_ACTIVITY_IDS, LOCAL_TEAM_ID } from "@/lib/db";
 import { SchoolLevel as Level, useSchoolLevel } from "@/lib/gradeLevel";
+import { pickVideoFromLibrary } from "@/lib/pickVideo";
 import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
 import { Palette, useTheme, useWizardStyles, WizardAccent } from "@/lib/theme";
 
@@ -48,7 +51,7 @@ const TRIALS = [
     title: "No parachute (baseline)",
     note: "Drop the toy with no parachute first.",
     instruction:
-      "Drop the toy with no parachute. Start the fall timer as you release it and stop it the moment it lands.",
+      "Drop the toy with no parachute, upload the clip, then mark release and first landing in the video.",
   },
   {
     id: "design1",
@@ -56,26 +59,27 @@ const TRIALS = [
     title: "Design 1",
     note: "e.g. plastic with four corners tied to the toy",
     instruction:
-      "Attach your first parachute design and drop from the same height. Time the fall the same way.",
+      "Attach your first parachute design, drop from the same height, upload the clip, then mark the key moments.",
   },
   {
     id: "design2",
     short: "Design 2",
     title: "Design 2",
     note: "",
-    instruction: "Swap to your second design and drop from the same height. Time the fall.",
+    instruction: "Swap to your second design, drop from the same height, upload the clip, then mark the key moments.",
   },
   {
     id: "design3",
     short: "Design 3",
     title: "Design 3",
     note: "",
-    instruction: "Test your third and final design from the same height. Time the fall.",
+    instruction: "Test your third and final design from the same height, upload the clip, then mark the key moments.",
   },
 ] as const;
 type TrialId = (typeof TRIALS)[number]["id"];
 
 type Measure = { fallMs: number; contactMs: number };
+type VideoMarks = { releaseS: number | null; landS: number | null; stopS: number | null };
 type Setup = { heightM: string; massKg: string };
 
 const G = 9.8; // gravitational field strength (m/s^2)
@@ -103,6 +107,9 @@ export default function ParachuteScreen() {
   );
   const [videos, setVideos] = useState<Record<TrialId, string>>(
     Object.fromEntries(TRIALS.map((t) => [t.id, ""])) as Record<TrialId, string>,
+  );
+  const [marks, setMarks] = useState<Record<TrialId, VideoMarks>>(
+    Object.fromEntries(TRIALS.map((t) => [t.id, emptyMarks()])) as Record<TrialId, VideoMarks>,
   );
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
@@ -137,7 +144,7 @@ export default function ParachuteScreen() {
             prediction_value: prediction.choice === trial.short ? "predicted best" : null,
             outcome_value: summarize(level, heightM, massKg, m),
             prediction_correct: null,
-            media_file_path: null,
+            media_file_path: videos[trial.id] || null,
           });
         }
       } catch (err) {
@@ -206,6 +213,8 @@ export default function ParachuteScreen() {
               setMeasures={setMeasures}
               videos={videos}
               setVideos={setVideos}
+              marks={marks}
+              setMarks={setMarks}
             />
           )}
           {current === "Results" && (
@@ -479,6 +488,8 @@ type RecorderProps = {
   setMeasures: Dispatch<SetStateAction<Record<TrialId, Measure>>>;
   videos: Record<TrialId, string>;
   setVideos: Dispatch<SetStateAction<Record<TrialId, string>>>;
+  marks: Record<TrialId, VideoMarks>;
+  setMarks: Dispatch<SetStateAction<Record<TrialId, VideoMarks>>>;
 };
 
 function Recorder({
@@ -489,56 +500,26 @@ function Recorder({
   setMeasures,
   videos,
   setVideos,
+  marks,
+  setMarks,
 }: RecorderProps) {
   const { palette: c } = useTheme();
   const styles = useWizardStyles(makeStyles);
   const [trial, setTrial] = useState<TrialId>(TRIALS[0].id);
-  // Which timer (if any) is currently running. Only one may run at a time.
-  const [timing, setTiming] = useState<null | "fall" | "contact">(null);
-  const [fallElapsed, setFallElapsed] = useState(measures[TRIALS[0].id].fallMs);
-  const [contactElapsed, setContactElapsed] = useState(measures[TRIALS[0].id].contactMs);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startRef = useRef(0);
-
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, []);
 
   function selectTrial(id: TrialId) {
-    if (timing) return; // don't switch mid-recording
     setTrial(id);
-    setFallElapsed(measures[id].fallMs);
-    setContactElapsed(measures[id].contactMs);
   }
 
-  function toggle(field: "fall" | "contact") {
-    if (timing === field) {
-      // Stop the running timer and save its value.
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      intervalRef.current = null;
-      setTiming(null);
-      const val = field === "fall" ? fallElapsed : contactElapsed;
-      const key = field === "fall" ? "fallMs" : "contactMs";
-      setMeasures((prev) => ({ ...prev, [trial]: { ...prev[trial], [key]: val } }));
-      return;
-    }
-    if (timing) return; // another timer is already running
-    const base = field === "fall" ? fallElapsed : contactElapsed;
-    startRef.current = Date.now() - base;
-    intervalRef.current = setInterval(() => {
-      const e = Date.now() - startRef.current;
-      if (field === "fall") setFallElapsed(e);
-      else setContactElapsed(e);
-    }, 30);
-    setTiming(field);
+  function updateMarks(nextMarks: VideoMarks) {
+    setMarks((prev) => ({ ...prev, [trial]: nextMarks }));
+    setMeasures((prev) => ({ ...prev, [trial]: deriveMeasure(level, nextMarks) }));
   }
 
   const trialIndex = TRIALS.findIndex((t) => t.id === trial);
   const currentTrial = TRIALS[trialIndex];
   const nextTrial = TRIALS[trialIndex + 1];
-  const recorded = !timing && measures[trial].fallMs > 0;
+  const recorded = isTrialMeasured(level, measures[trial]);
 
   return (
     <>
@@ -590,30 +571,16 @@ function Recorder({
         <Text style={styles.instructionText}>{currentTrial.instruction}</Text>
       </View>
 
-      <VideoEvidence
-        value={videos[trial]}
-        onChange={(uri) => setVideos((prev) => ({ ...prev, [trial]: uri }))}
+      <ParachuteVideoMeasurement
+        level={level}
+        video={videos[trial]}
+        onVideoChange={(uri) => {
+          setVideos((prev) => ({ ...prev, [trial]: uri }));
+          if (!uri) updateMarks(emptyMarks());
+        }}
+        marks={marks[trial]}
+        onMarksChange={updateMarks}
       />
-
-      <TimerCard
-        styles={styles}
-        label="Fall time — release to first landing"
-        elapsed={fallElapsed}
-        running={timing === "fall"}
-        disabled={timing === "contact"}
-        onToggle={() => toggle("fall")}
-      />
-
-      {level === "high" && (
-        <TimerCard
-          styles={styles}
-          label="Contact time — landing to fully stopped (slow motion)"
-          elapsed={contactElapsed}
-          running={timing === "contact"}
-          disabled={timing === "fall"}
-          onToggle={() => toggle("contact")}
-        />
-      )}
 
       {recorded &&
         (nextTrial ? (
@@ -630,40 +597,241 @@ function Recorder({
   );
 }
 
-function TimerCard({
-  styles,
-  label,
-  elapsed,
-  running,
-  disabled,
-  onToggle,
+function ParachuteVideoMeasurement({
+  level,
+  video,
+  onVideoChange,
+  marks,
+  onMarksChange,
 }: {
-  styles: ReturnType<typeof makeStyles>;
-  label: string;
-  elapsed: number;
-  running: boolean;
-  disabled: boolean;
-  onToggle: () => void;
+  level: Level;
+  video: string;
+  onVideoChange: (uri: string) => void;
+  marks: VideoMarks;
+  onMarksChange: (marks: VideoMarks) => void;
 }) {
-  return (
-    <View style={[styles.card, styles.timerCard]}>
-      <Text style={styles.timerLabel}>{label}</Text>
-      <Text style={styles.timer}>{formatTime(elapsed)}</Text>
-      <Pressable
-        style={[
-          styles.outlineBtn,
-          running && styles.primaryBtn,
-          disabled && styles.btnDisabled,
-        ]}
-        onPress={onToggle}
-        disabled={disabled}
-      >
-        <Text style={[styles.outlineBtnText, running && styles.primaryBtnText]}>
-          {running ? "Stop Timer" : "Start Timer"}
-        </Text>
+  const { palette: c } = useTheme();
+  const styles = useWizardStyles(makeStyles);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [rate, setRate] = useState(0.5);
+
+  const player = useVideoPlayer(video || null, (p) => {
+    p.loop = false;
+    p.timeUpdateEventInterval = 0.05;
+    p.playbackRate = rate;
+  });
+
+  useEventListener(player, "timeUpdate", ({ currentTime }) => {
+    setCurrentTime(Number.isFinite(currentTime) ? currentTime : 0);
+  });
+
+  useEventListener(player, "playingChange", ({ isPlaying }) => {
+    setIsPlaying(isPlaying);
+  });
+
+  useEventListener(player, "sourceLoad", ({ duration }) => {
+    setDuration(Number.isFinite(duration) ? duration : 0);
+  });
+
+  useEventListener(player, "playToEnd", () => {
+    setIsPlaying(false);
+  });
+
+  useEffect(() => {
+    setCurrentTime(0);
+    setDuration(0);
+    setIsPlaying(false);
+    player.replaceAsync(video || null).catch(() => {});
+  }, [video, player]);
+
+  useEffect(() => {
+    player.playbackRate = rate;
+  }, [player, rate]);
+
+  async function handlePick() {
+    const uri = await pickVideoFromLibrary();
+    if (uri) onVideoChange(uri);
+  }
+
+  function handleClear() {
+    Alert.alert("Remove video?", "This will clear the attached video and its timing marks.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Clear", style: "destructive", onPress: () => onVideoChange("") },
+    ]);
+  }
+
+  function mark(key: keyof VideoMarks) {
+    onMarksChange({ ...marks, [key]: roundVideoSecond(currentTime) });
+  }
+
+  function clearMarks() {
+    onMarksChange(emptyMarks());
+  }
+
+  function seekBy(seconds: number) {
+    player.currentTime = Math.max(0, Math.min(duration || currentTime, currentTime + seconds));
+    setCurrentTime(player.currentTime);
+  }
+
+  function togglePlayback() {
+    if (isPlaying) {
+      player.pause();
+      setIsPlaying(false);
+    } else {
+      player.play();
+      setIsPlaying(true);
+    }
+  }
+
+  const measure = deriveMeasure(level, marks);
+  const markRows: [keyof VideoMarks, string][] =
+    level === "high"
+      ? [
+          ["releaseS", "Release"],
+          ["landS", "First landing"],
+          ["stopS", "Fully stopped"],
+        ]
+      : [
+          ["releaseS", "Release"],
+          ["landS", "First landing"],
+        ];
+
+  if (!video) {
+    return (
+      <Pressable style={styles.uploadVideoCard} onPress={handlePick}>
+        <Ionicons name="videocam" size={18} color={c.primary} />
+        <Text style={styles.uploadVideoText}>Upload drop video</Text>
       </Pressable>
+    );
+  }
+
+  return (
+    <View style={styles.videoMeasureCard}>
+      <VideoView
+        player={player}
+        style={styles.video}
+        contentFit="contain"
+        nativeControls
+        allowsFullscreen
+      />
+
+      <View style={styles.videoMetaRow}>
+        <View>
+          <Text style={styles.videoTime}>{formatVideoSecond(currentTime)}</Text>
+          <Text style={styles.videoDuration}>of {formatVideoSecond(duration)}</Text>
+        </View>
+        <View style={styles.videoActions}>
+          <Pressable style={styles.iconBtn} onPress={() => seekBy(-0.1)}>
+            <Ionicons name="play-back" size={16} color={c.primary} />
+          </Pressable>
+          <Pressable style={[styles.iconBtn, styles.iconBtnPrimary]} onPress={togglePlayback}>
+            <Ionicons name={isPlaying ? "pause" : "play"} size={16} color={c.white} />
+          </Pressable>
+          <Pressable style={styles.iconBtn} onPress={() => seekBy(0.1)}>
+            <Ionicons name="play-forward" size={16} color={c.primary} />
+          </Pressable>
+        </View>
+      </View>
+
+      <View style={styles.rateRow}>
+        {[0.25, 0.5, 1].map((option) => {
+          const active = rate === option;
+          return (
+            <Pressable
+              key={option}
+              style={[styles.rateBtn, active && styles.rateBtnActive]}
+              onPress={() => setRate(option)}
+            >
+              <Text style={[styles.rateText, active && styles.rateTextActive]}>{option}x</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <View style={styles.markGrid}>
+        {markRows.map(([key, label]) => {
+          const value = marks[key];
+          const active = value !== null;
+          return (
+            <Pressable
+              key={key}
+              style={[styles.markBtn, active && styles.markBtnActive]}
+              onPress={() => mark(key)}
+            >
+              <Text style={[styles.markBtnText, active && styles.markBtnTextActive]}>{label}</Text>
+              <Text style={[styles.markValue, active && styles.markBtnTextActive]}>
+                {formatVideoSecond(value)}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <View style={styles.measureSummary}>
+        <View style={styles.measureSummaryRow}>
+          <Text style={styles.measureLabel}>Fall time</Text>
+          <Text style={styles.measureValue}>{formatTime(measure.fallMs)}</Text>
+        </View>
+        {level === "high" && (
+          <View style={styles.measureSummaryRow}>
+            <Text style={styles.measureLabel}>Contact time</Text>
+            <Text style={styles.measureValue}>{formatTime(measure.contactMs)}</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.videoFooterActions}>
+        <Pressable style={styles.videoFooterBtn} onPress={handlePick}>
+          <Ionicons name="swap-horizontal" size={16} color={c.primary} />
+          <Text style={styles.videoFooterText}>Replace</Text>
+        </Pressable>
+        <Pressable style={styles.videoFooterBtn} onPress={clearMarks}>
+          <Ionicons name="refresh" size={16} color={c.primary} />
+          <Text style={styles.videoFooterText}>Clear marks</Text>
+        </Pressable>
+        <Pressable style={styles.videoFooterBtn} onPress={handleClear}>
+          <Ionicons name="trash-outline" size={16} color={c.error} />
+          <Text style={[styles.videoFooterText, styles.clearText]}>Clear</Text>
+        </Pressable>
+      </View>
     </View>
   );
+}
+
+function emptyMarks(): VideoMarks {
+  return { releaseS: null, landS: null, stopS: null };
+}
+
+function deriveMeasure(level: Level, marks: VideoMarks): Measure {
+  const fallMs = markDeltaMs(marks.releaseS, marks.landS);
+  const contactMs = level === "high" ? markDeltaMs(marks.landS, marks.stopS) : 0;
+  return { fallMs, contactMs };
+}
+
+function markDeltaMs(start: number | null, end: number | null) {
+  if (start === null || end === null || end <= start) return 0;
+  return Math.round((end - start) * 1000);
+}
+
+function isTrialMeasured(level: Level, measure: Measure) {
+  return measure.fallMs > 0 && (level === "primary" || measure.contactMs > 0);
+}
+
+function roundVideoSecond(second: number) {
+  return Math.max(0, Math.round(second * 100) / 100);
+}
+
+function formatVideoSecond(second: number | null) {
+  if (second === null || !Number.isFinite(second)) return "0:00.00";
+  const safeSecond = Math.max(0, second);
+  const minutes = Math.floor(safeSecond / 60);
+  const seconds = Math.floor(safeSecond % 60);
+  const hundredths = Math.floor((safeSecond % 1) * 100);
+  return `${minutes}:${seconds.toString().padStart(2, "0")}.${hundredths
+    .toString()
+    .padStart(2, "0")}`;
 }
 
 function formatTime(ms: number) {
@@ -1107,6 +1275,117 @@ const makeStyles = (c: Palette, ACCENT: WizardAccent) =>
   },
   outlineBtnText: { color: c.inputText, fontSize: 17, fontWeight: "700" },
   btnDisabled: { opacity: 0.4 },
+  uploadVideoCard: {
+    minHeight: 54,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: c.white,
+    borderWidth: 1,
+    borderColor: ACCENT.border,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  uploadVideoText: { color: c.primary, fontSize: 15, fontWeight: "700" },
+  videoMeasureCard: {
+    backgroundColor: c.white,
+    borderWidth: 1,
+    borderColor: ACCENT.border,
+    borderRadius: 14,
+    padding: 12,
+    gap: 12,
+  },
+  video: {
+    width: "100%",
+    aspectRatio: 16 / 9,
+    borderRadius: 10,
+    backgroundColor: "#000",
+  },
+  videoMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  videoTime: { color: c.inputText, fontSize: 24, fontWeight: "800", fontVariant: ["tabular-nums"] },
+  videoDuration: { color: c.muted, fontSize: 12, fontWeight: "700", marginTop: 2 },
+  videoActions: { flexDirection: "row", gap: 8 },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: ACCENT.border,
+    borderRadius: 10,
+    backgroundColor: c.white,
+  },
+  iconBtnPrimary: { backgroundColor: c.primary, borderColor: c.primary },
+  rateRow: { flexDirection: "row", gap: 8 },
+  rateBtn: {
+    flex: 1,
+    minHeight: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: ACCENT.border,
+    borderRadius: 10,
+  },
+  rateBtnActive: { backgroundColor: ACCENT.tabActive, borderColor: c.primary },
+  rateText: { color: c.inputText, fontSize: 14, fontWeight: "700" },
+  rateTextActive: { color: c.primary },
+  markGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  markBtn: {
+    flexGrow: 1,
+    minWidth: "31%",
+    minHeight: 64,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: ACCENT.border,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+  },
+  markBtnActive: { backgroundColor: ACCENT.tabActive, borderColor: c.primary },
+  markBtnText: { color: c.inputText, fontSize: 13, fontWeight: "800", textAlign: "center" },
+  markBtnTextActive: { color: c.primary },
+  markValue: {
+    color: c.muted,
+    fontSize: 13,
+    fontWeight: "700",
+    marginTop: 4,
+    fontVariant: ["tabular-nums"],
+  },
+  measureSummary: { borderWidth: 1, borderColor: ACCENT.border, borderRadius: 10, overflow: "hidden" },
+  measureSummaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: ACCENT.border,
+  },
+  measureLabel: { color: c.muted, fontSize: 14, fontWeight: "700" },
+  measureValue: { color: c.inputText, fontSize: 14, fontWeight: "800", fontVariant: ["tabular-nums"] },
+  videoFooterActions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  videoFooterBtn: {
+    flexGrow: 1,
+    minHeight: 40,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderColor: ACCENT.border,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+  },
+  videoFooterText: { color: c.primary, fontSize: 13, fontWeight: "700" },
+  clearText: { color: c.error },
 
   // Write-Up / Results (stacked cards)
   stack: { gap: 16 },
