@@ -74,6 +74,11 @@ export default function FanScreen() {
   const isLast = step === TABS.length - 1;
 
   const goNext = async () => {
+    if (current === "Recorder" && !allFanVideosAttached(videos)) {
+      Alert.alert("Recorder incomplete", "Upload one video for every fan design before continuing.");
+      return;
+    }
+
     if (isLast) {
       // Persist the activity session and data points to SQLite
       let localSaveMessage = "Activity data was saved locally.";
@@ -178,6 +183,10 @@ export default function FanScreen() {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
+}
+
+function allFanVideosAttached(videos: Record<TrialId, string>) {
+  return TRIALS.every((trial) => videos[trial.id] !== "");
 }
 
 /* -------------------------------------------------------------------------- */

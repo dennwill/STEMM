@@ -82,6 +82,7 @@ export default function SoundScreen() {
   const [videos, setVideos] = useState<Record<TrialId, string>>(
     Object.fromEntries(TRIALS.map((t) => [t.id, ""])) as Record<TrialId, string>,
   );
+  const [recorderBusy, setRecorderBusy] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
   const current = TABS[step];
@@ -89,6 +90,15 @@ export default function SoundScreen() {
   const isLast = step === TABS.length - 1;
 
   const goNext = async () => {
+    if (current === "Recorder" && recorderBusy) {
+      Alert.alert("Recorder running", "Stop the decibel meter before continuing.");
+      return;
+    }
+    if (current === "Recorder" && !allSoundLevelsRecorded(levels)) {
+      Alert.alert("Recorder incomplete", "Measure and save a sound level for every action before continuing.");
+      return;
+    }
+
     if (isLast) {
       // Persist the activity session and data points to SQLite
       let localSaveMessage = "Activity data was saved locally.";
@@ -156,7 +166,13 @@ export default function SoundScreen() {
           {current === "Instructions" && <Instructions />}
           {current === "Prediction" && <Prediction value={prediction} onChange={setPrediction} />}
           {current === "Recorder" && (
-            <Recorder levels={levels} setLevels={setLevels} videos={videos} setVideos={setVideos} />
+            <Recorder
+              levels={levels}
+              setLevels={setLevels}
+              videos={videos}
+              setVideos={setVideos}
+              setRecorderBusy={setRecorderBusy}
+            />
           )}
           {current === "Write-Up" && (
             <WriteUp
@@ -185,6 +201,10 @@ export default function SoundScreen() {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
+}
+
+function allSoundLevelsRecorded(levels: Record<TrialId, number>) {
+  return TRIALS.every((trial) => levels[trial.id] > 0);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -291,6 +311,7 @@ type LevelsProps = {
   setLevels: Dispatch<SetStateAction<Record<TrialId, number>>>;
   videos: Record<TrialId, string>;
   setVideos: Dispatch<SetStateAction<Record<TrialId, string>>>;
+  setRecorderBusy: Dispatch<SetStateAction<boolean>>;
 };
 
 // The phone mic is uncalibrated and reports loudness in dBFS (≈ -160…0). Rather
@@ -299,7 +320,7 @@ type LevelsProps = {
 // sound rises above it. Readings therefore always begin at 0.
 const CALIBRATION_SAMPLES = 5; // ~0.5s of ambient at the 100ms metering interval
 
-function Recorder({ levels, setLevels, videos, setVideos }: LevelsProps) {
+function Recorder({ levels, setLevels, videos, setVideos, setRecorderBusy }: LevelsProps) {
   const { palette: c } = useTheme();
   const styles = useWizardStyles(makeStyles);
   const meteringSupported = Platform.OS !== "web";
@@ -344,8 +365,13 @@ function Recorder({ levels, setLevels, videos, setVideos }: LevelsProps) {
   useEffect(() => {
     return () => {
       if (runningRef.current) recorder.stop().catch(() => {});
+      setRecorderBusy(false);
     };
-  }, [recorder]);
+  }, [recorder, setRecorderBusy]);
+
+  useEffect(() => {
+    setRecorderBusy(running);
+  }, [running, setRecorderBusy]);
 
   function selectTrial(id: TrialId) {
     if (running) return; // don't switch mid-recording

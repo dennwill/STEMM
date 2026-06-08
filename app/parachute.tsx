@@ -118,6 +118,14 @@ export default function ParachuteScreen() {
   const isLast = step === TABS.length - 1;
 
   const goNext = async () => {
+    if (current === "Recorder") {
+      const validationMessage = validateParachuteRecorder(level, setup, measures, videos);
+      if (validationMessage) {
+        Alert.alert("Recorder incomplete", validationMessage);
+        return;
+      }
+    }
+
     if (isLast) {
       // Persist the activity session and data points to SQLite
       let localSaveMessage = "Activity data was saved locally.";
@@ -258,6 +266,26 @@ export default function ParachuteScreen() {
 function num(s: string) {
   const n = parseFloat(s);
   return Number.isFinite(n) ? n : NaN;
+}
+
+function validateParachuteRecorder(
+  level: Level,
+  setup: Setup,
+  measures: Record<TrialId, Measure>,
+  videos: Record<TrialId, string>,
+) {
+  if (num(setup.heightM) <= 0 || num(setup.massKg) <= 0) {
+    return "Enter a positive drop height and toy mass before continuing.";
+  }
+  if (!TRIALS.every((trial) => videos[trial.id] !== "")) {
+    return "Upload a drop video for every parachute trial before continuing.";
+  }
+  if (!TRIALS.every((trial) => isTrialMeasured(level, measures[trial.id]))) {
+    return level === "high"
+      ? "Mark release, first landing, and fully stopped for every trial before continuing."
+      : "Mark release and first landing for every trial before continuing.";
+  }
+  return "";
 }
 
 type Metrics = {
