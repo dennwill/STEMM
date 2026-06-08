@@ -702,6 +702,14 @@ function PerformanceRecorder({
     setRunning(true);
   }
 
+  function clearCount() {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = null;
+    setRunning(false);
+    setElapsed(0);
+    setMeasurements((prev) => ({ ...prev, [trial]: { elapsed: 0, beats: 0 } }));
+  }
+
   function changeBeats(delta: number) {
     setMeasurements((prev) => {
       const current = prev[trial];
@@ -760,6 +768,9 @@ function PerformanceRecorder({
           <Text style={[styles.outlineBtnText, running && styles.primaryBtnText]}>
             {running ? "Stop Count" : elapsed >= maxMs ? "Restart 15s Count" : "Start 15s Count"}
           </Text>
+        </Pressable>
+        <Pressable style={styles.outlineBtn} onPress={clearCount}>
+          <Text style={styles.outlineBtnText}>Clear Count</Text>
         </Pressable>
       </View>
 
@@ -985,6 +996,16 @@ function ReactionRecorder({
     setMessage(`Saved ${reactionMs} ms. Start another round.`);
   }
 
+  function clearRounds() {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = null;
+    acceptingTapRef.current = false;
+    setActiveCell(null);
+    setStatus("idle");
+    setMessage("Rounds cleared. Press Start Round when you are ready.");
+    setMeasurements((prev) => ({ ...prev, [trial]: { rounds: [] } }));
+  }
+
   const trialIndex = trials.findIndex((t) => t.id === trial);
   const currentTrial = trials[trialIndex];
   const nextTrial = trials[trialIndex + 1];
@@ -1050,6 +1071,9 @@ function ReactionRecorder({
           >
             {rounds.length >= 5 ? "Trial Complete" : "Start Round"}
           </Text>
+        </Pressable>
+        <Pressable style={styles.outlineBtn} onPress={clearRounds}>
+          <Text style={styles.outlineBtnText}>Clear Rounds</Text>
         </Pressable>
       </View>
 
@@ -1297,6 +1321,17 @@ function BreathingRecorder({
     setRunning(true);
   }
 
+  function clearTrainer() {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = null;
+    setRunning(false);
+    setElapsed(0);
+    setMeasurements((prev) => ({
+      ...prev,
+      [trial]: { elapsed: 0, cycles: 0, breaths: 0 },
+    }));
+  }
+
   function changeBreaths(delta: number) {
     setMeasurements((prev) => {
       const current = prev[trial];
@@ -1361,6 +1396,9 @@ function BreathingRecorder({
           <Text style={[styles.outlineBtnText, running && styles.primaryBtnText]}>
             {running ? "Stop Trainer" : "Start Trainer"}
           </Text>
+        </Pressable>
+        <Pressable style={styles.outlineBtn} onPress={clearTrainer}>
+          <Text style={styles.outlineBtnText}>Clear Trainer</Text>
         </Pressable>
       </View>
 

@@ -411,6 +411,24 @@ function Recorder({ levels, setLevels, videos, setVideos, setRecorderBusy }: Lev
     setRunning(true);
   }
 
+  async function clearReading() {
+    if (runningRef.current) {
+      runningRef.current = false;
+      setRunning(false);
+      setCalibrating(false);
+      try {
+        await recorder.stop();
+      } catch {
+        // ignore — clearing should still reset local state
+      }
+    }
+    peakRef.current = 0;
+    baselineRef.current = null;
+    calibrationSamplesRef.current = [];
+    setDisplay(0);
+    setLevels((prev) => ({ ...prev, [trial]: 0 }));
+  }
+
   const trialIndex = TRIALS.findIndex((t) => t.id === trial);
   const currentTrial = TRIALS[trialIndex];
   const nextTrial = TRIALS[trialIndex + 1];
@@ -448,6 +466,9 @@ function Recorder({ levels, setLevels, videos, setVideos, setRecorderBusy }: Lev
           <Text style={[styles.outlineBtnText, running && styles.primaryBtnText]}>
             {running ? "Stop Decibel Meter" : "Start Decibel Meter"}
           </Text>
+        </Pressable>
+        <Pressable style={[styles.outlineBtn, styles.clearControl]} onPress={clearReading}>
+          <Text style={styles.outlineBtnText}>Clear Reading</Text>
         </Pressable>
         {!meteringSupported ? (
           <Text style={styles.meterCaption}>Live metering isn&apos;t available on web — open the app on a phone.</Text>
@@ -832,6 +853,7 @@ const makeStyles = (c: Palette, ACCENT: WizardAccent) =>
     },
     outlineBtnText: { color: c.inputText, fontSize: 17, fontWeight: "700" },
     btnDisabled: { opacity: 0.5 },
+    clearControl: { marginTop: 10 },
 
     // Write-Up (stacked action cards)
     stack: { gap: 16 },
