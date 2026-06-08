@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { VideoEvidence } from "@/components/VideoEvidence";
+import { EarthquakeDiagram } from "@/components/ActivityDiagrams";
 import { createChallengeSession, createDataPoint } from "@/lib/crud";
 import { LOCAL_ACTIVITY_IDS, LOCAL_TEAM_ID } from "@/lib/db";
 import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
@@ -197,6 +198,7 @@ function Instructions() {
       ))}
 
       <Text style={styles.blockTitle}>Diagram</Text>
+      <EarthquakeDiagram />
       {[
         "Fold paper or cardboard into an anti-vibration base.",
         "Add cup pillars and a flat cardboard platform on top.",

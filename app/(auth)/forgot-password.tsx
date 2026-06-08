@@ -48,7 +48,8 @@ export default function ForgotPasswordScreen() {
 
         <Text style={styles.successText}>
           If an account exists for that email, we&apos;ve sent a link to reset your password.
-          Follow it to choose a new password.
+          Follow it to choose a new password. If you don&apos;t see it, check your spam or junk
+          folder.
         </Text>
 
         <View style={styles.actions}>

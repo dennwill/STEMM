@@ -18,6 +18,7 @@ import { createChallengeSession, createDataPoint } from "@/lib/crud";
 import { LOCAL_ACTIVITY_IDS, LOCAL_TEAM_ID } from "@/lib/db";
 import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
 import { VideoEvidence } from "@/components/VideoEvidence";
+import { FanDiagram } from "@/components/ActivityDiagrams";
 import { Palette, useTheme, useWizardStyles, WizardAccent } from "@/lib/theme";
 
 const TABS = ["Instructions", "Prediction", "Recorder", "Write-Up", "Discussion"] as const;
@@ -32,28 +33,23 @@ const TRIALS = [
     title: "Design 1",
     note: "e.g. 1 cm back-and-forward folds",
     instruction:
-      "Make your first fan design, then wave it at the upright paper from 15, 30 and 45 cm. Upload a video of the paper moving.",
+      "Make your first fan design, then wave it at the upright paper from 15, 30 and 45 cm. Try it against both paper and cardboard. Upload a video of the paper moving.",
   },
   {
     id: "design2",
     short: "Design 2",
     title: "Design 2",
     note: "e.g. no folds",
-    instruction: "Make your second design and wave it from the same distances. Upload a video.",
+    instruction:
+      "Make your second design and wave it from the same distances (15, 30, 45 cm), against paper and cardboard. Upload a video.",
   },
   {
     id: "design3",
     short: "Design 3",
     title: "Design 3",
     note: "",
-    instruction: "Test your third design from the same distances. Upload a video.",
-  },
-  {
-    id: "design4",
-    short: "Design 4",
-    title: "Design 4",
-    note: "",
-    instruction: "Test your fourth design from the same distances. Upload a video.",
+    instruction:
+      "Test your third design from the same distances (15, 30, 45 cm), against paper and cardboard. Upload a video.",
   },
 ] as const;
 type TrialId = (typeof TRIALS)[number]["id"];
@@ -219,6 +215,7 @@ function Instructions() {
       ))}
 
       <Text style={styles.blockTitle}>Diagram</Text>
+      <FanDiagram />
       {[
         "Cut paper 1 cm × 10 cm and fold it into a fan.",
         "Tape the target paper upright to the table.",
@@ -348,11 +345,12 @@ function Recorder({ videos, setVideos }: VideosProps) {
 /* Write-Up                                                                   */
 /* -------------------------------------------------------------------------- */
 
-// The 3 questions asked for every design (the mockup table's columns).
+// The 3 questions asked for every design (the spec table's columns). The first
+// two capture the bend angle in degrees; the third is free-text observation notes.
 const WRITEUP_QUESTIONS = [
-  { label: "Prediction (more or less movement than the others?)", options: ["More", "Less"] },
-  { label: "Outcome (how much did the paper move?)" },
-  { label: "Were you right?", options: ["Yes", "No"] },
+  { label: "Predicted bend (degrees)", numeric: true, placeholder: "e.g. 30" },
+  { label: "Outcome — measured bend (degrees)", numeric: true, placeholder: "e.g. 25" },
+  { label: "Observation notes — were you right?" },
 ];
 
 type WriteUpProps = {
@@ -374,41 +372,22 @@ function WriteUp({ videos, answers, setAnswers, reflection, setReflection }: Wri
           {!!trial.note && <Text style={styles.actionNote}>{trial.note}</Text>}
           {videos[trial.id] !== "" && <Text style={styles.attachedHint}>📹 Video attached</Text>}
 
-          {WRITEUP_QUESTIONS.map((q, c) => {
-            const key = `${trial.id}-${c}`;
+          {WRITEUP_QUESTIONS.map((q, i) => {
+            const key = `${trial.id}-${i}`;
+            const numeric = "numeric" in q && q.numeric;
             return (
               <View key={key} style={styles.field}>
                 <Text style={styles.fieldLabel}>{q.label}</Text>
-                {q.options ? (
-                  <View style={styles.choiceRow}>
-                    {q.options.map((opt) => {
-                      const active = answers[key] === opt;
-                      return (
-                        <Pressable
-                          key={opt}
-                          style={[styles.choiceChip, active && styles.choiceChipActive]}
-                          onPress={() =>
-                            setAnswers((prev) => ({ ...prev, [key]: active ? "" : opt }))
-                          }
-                        >
-                          <Text
-                            style={[styles.choiceChipText, active && styles.choiceChipTextActive]}
-                          >
-                            {opt}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                ) : (
-                  <TextInput
-                    style={styles.fieldInput}
-                    value={answers[key] ?? ""}
-                    onChangeText={(v) => setAnswers((prev) => ({ ...prev, [key]: v }))}
-                    multiline
-                    textAlignVertical="top"
-                  />
-                )}
+                <TextInput
+                  style={styles.fieldInput}
+                  value={answers[key] ?? ""}
+                  onChangeText={(v) => setAnswers((prev) => ({ ...prev, [key]: v }))}
+                  placeholder={"placeholder" in q ? q.placeholder : undefined}
+                  placeholderTextColor={c.muted}
+                  keyboardType={numeric ? "numeric" : "default"}
+                  multiline={!numeric}
+                  textAlignVertical="top"
+                />
               </View>
             );
           })}
@@ -437,6 +416,15 @@ function WriteUp({ videos, answers, setAnswers, reflection, setReflection }: Wri
 /* Discussion                                                                 */
 /* -------------------------------------------------------------------------- */
 
+// Rough classroom stiffness values (N/rad) for the Optional Challenge. The point
+// is to show relative differences between materials, not exact figures.
+const K_VALUES: { material: string; thickness: string; k: string; notes: string }[] = [
+  { material: "Thin printer paper", thickness: "0.1", k: "0.05", notes: "Bends very easily" },
+  { material: "Standard card stock", thickness: "0.25", k: "0.2", notes: "Moderate bend" },
+  { material: "Thin cardboard", thickness: "0.5", k: "0.5", notes: "Much harder to bend" },
+  { material: "Corrugated cardboard", thickness: "3", k: "2–3", notes: "Very stiff, almost no bend" },
+];
+
 function Discussion() {
   const styles = useWizardStyles(makeStyles);
   return (
@@ -454,6 +442,45 @@ function Discussion() {
         <Text style={styles.tipLead}>Tip: </Text>
         approximate the force with the formula above, or simply rank your designs by stiffness and
         bend angle — exact units aren&apos;t needed.
+      </Text>
+
+      <Text style={[styles.sectionHeading, styles.spacedTop]}>Optional challenge</Text>
+      <Text style={styles.body}>
+        Estimate a stiffness coefficient <Text style={styles.tipLead}>k</Text> for each material by
+        measuring its bend angle under the same fan speed. In F ≈ k × θ, F is the force (N), θ is the
+        bend angle (radians) and k is how strongly the material resists bending.
+      </Text>
+
+      <View style={[styles.forceTable, styles.spacedTop]}>
+        <View style={[styles.forceRow, styles.forceHeaderRow]}>
+          <Text style={[styles.forceCell, styles.forceHeaderText]}>Material</Text>
+          <Text style={[styles.forceCell, styles.forceHeaderText]}>Thickness (mm)</Text>
+          <Text style={[styles.forceCell, styles.forceHeaderText]}>k (N/rad)</Text>
+          <Text style={[styles.forceCell, styles.forceHeaderText]}>Notes</Text>
+        </View>
+        {K_VALUES.map((row, i) => (
+          <View
+            key={row.material}
+            style={[styles.forceRow, i === K_VALUES.length - 1 && styles.forceRowLast]}
+          >
+            <Text style={styles.forceCell}>{row.material}</Text>
+            <Text style={styles.forceCell}>{row.thickness}</Text>
+            <Text style={styles.forceCell}>{row.k}</Text>
+            <Text style={styles.forceCell}>{row.notes}</Text>
+          </View>
+        ))}
+      </View>
+
+      <Text style={styles.tableNote}>
+        These are rough classroom values — the point is to see the relative differences between
+        materials.
+      </Text>
+
+      <Text style={[styles.body, styles.spacedTop]}>
+        <Text style={styles.tipLead}>Worked example: </Text>
+        thin paper (k = 0.05) bent 30° ≈ 0.524 rad gives F ≈ 0.05 × 0.524 ≈ 0.026 N. Thin cardboard
+        (k = 0.5) at the same angle gives F ≈ 0.5 × 0.524 ≈ 0.26 N — so the force needed rises
+        strongly with stiffness.
       </Text>
     </View>
   );
@@ -644,6 +671,17 @@ const makeStyles = (c: Palette, ACCENT: WizardAccent) =>
     marginTop: 8,
   },
   tipLead: { fontWeight: "800", color: c.primary },
+  forceTable: { borderWidth: 1, borderColor: ACCENT.border, borderRadius: 8, overflow: "hidden" },
+  forceRow: {
+    flexDirection: "row",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: ACCENT.border,
+  },
+  forceRowLast: { borderBottomWidth: 0 },
+  forceHeaderRow: { backgroundColor: ACCENT.softHeader },
+  forceCell: { flex: 1, padding: 14, color: c.inputText, fontSize: 15, lineHeight: 21 },
+  forceHeaderText: { fontWeight: "800" },
+  tableNote: { color: c.muted, fontSize: 13, fontStyle: "italic", marginTop: 12, lineHeight: 19 },
 
   // Wizard footer
   footer: {

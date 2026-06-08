@@ -180,7 +180,10 @@ export default function DashboardScreen() {
             </View>
             <View style={styles.verifyContent}>
               <Text style={styles.verifyTitle}>Verify your email</Text>
-              <Text style={styles.verifyText}>Confirm your email address to secure your account.</Text>
+              <Text style={styles.verifyText}>
+                Confirm your email address to secure your account. If you don&apos;t see the
+                email, check your spam or junk folder.
+              </Text>
               <PressableScale
                 onPress={resendVerification}
                 disabled={resendState !== "idle"}

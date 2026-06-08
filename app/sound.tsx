@@ -23,6 +23,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { VideoEvidence } from "@/components/VideoEvidence";
+import { SoundDiagram } from "@/components/ActivityDiagrams";
 import { createChallengeSession, createDataPoint } from "@/lib/crud";
 import { LOCAL_ACTIVITY_IDS, LOCAL_TEAM_ID } from "@/lib/db";
 import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
@@ -217,6 +218,7 @@ function Instructions() {
       ))}
 
       <Text style={styles.blockTitle}>Diagram</Text>
+      <SoundDiagram />
       {[
         "Drop object (e.g. book) on the table or floor.",
         "Position the phone 30 cm from the noise source.",

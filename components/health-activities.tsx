@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { Dispatch, ReactElement, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
+import { Dispatch, ReactElement, ReactNode, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { VideoEvidence } from "@/components/VideoEvidence";
+import { BreathingDiagram, PerformanceDiagram, ReactionDiagram } from "@/components/ActivityDiagrams";
 import { createChallengeSession, createDataPoint } from "@/lib/crud";
 import { LOCAL_ACTIVITY_IDS, LOCAL_TEAM_ID } from "@/lib/db";
 import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
@@ -277,11 +278,13 @@ function InstructionsContent({
   equipment,
   instructions,
   diagram,
+  diagramArt,
 }: {
   overview: string;
   equipment: string[];
   instructions: string[];
   diagram: string[];
+  diagramArt?: ReactNode;
 }) {
   const styles = useActivityStyles();
   return (
@@ -302,6 +305,7 @@ function InstructionsContent({
       ))}
 
       <Text style={styles.blockTitle}>Diagram</Text>
+      {diagramArt}
       {diagram.map((item) => (
         <Bullet key={item}>{item}</Bullet>
       ))}
@@ -582,6 +586,7 @@ export function HumanPerformanceLabScreen() {
             "Student counts pulse beats during each trial.",
             "Pulse should rise after exercise and move back toward resting during recovery.",
           ]}
+          diagramArt={<PerformanceDiagram />}
         />
       )}
       renderRecorder={(props) => <PerformanceRecorder {...props} />}
@@ -846,6 +851,7 @@ export function ReactionBoardChallengeScreen() {
             "Target changes to Tap after a random delay.",
             "App records the time between cue and tap.",
           ]}
+          diagramArt={<ReactionDiagram />}
         />
       )}
       renderRecorder={(props) => <ReactionRecorder {...props} />}
@@ -1170,6 +1176,7 @@ export function BreathingPaceTrainerScreen() {
             "Circle contracts during exhale.",
             "Student records time, cycles, and reflection.",
           ]}
+          diagramArt={<BreathingDiagram />}
         />
       )}
       renderRecorder={(props) => <BreathingRecorder {...props} />}

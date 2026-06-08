@@ -265,7 +265,7 @@ export default function TeamScreen() {
               <View style={styles.verifyGate}>
                 <Text style={styles.verifyGateText}>
                   Verify your email to join or create a team. Check your inbox for the
-                  confirmation link.
+                  confirmation link — if you don&apos;t see it, check your spam or junk folder.
                 </Text>
                 <Pressable
                   onPress={resendVerification}
