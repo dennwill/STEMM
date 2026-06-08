@@ -217,6 +217,13 @@ function Instructions() {
         </Numbered>
       ))}
 
+      <Text style={styles.blockTitle}>Reference table</Text>
+      <SoundLevelReferenceTable />
+      <Text style={styles.tableNote}>
+        Note: these are absolute sound levels. The Recorder is calibrated to your room — it reads dB above the
+        background noise, so its numbers start at 0 and will be lower than the levels in this table.
+      </Text>
+
       <Text style={styles.blockTitle}>Diagram</Text>
       <SoundDiagram />
       {[
@@ -588,39 +595,11 @@ const DB_LEVELS: { level: string; sounds: string; risk: string; tint?: TintKey }
 
 function Discussion() {
   const styles = useWizardStyles(makeStyles);
-  const { isDark } = useTheme();
   return (
     <View style={styles.card}>
       <Text style={styles.sectionHeading}>So why does this happen?</Text>
 
-      <View style={styles.forceTable}>
-        <View style={[styles.forceRow, styles.forceHeaderRow]}>
-          <Text style={[styles.forceCell, styles.forceHeaderText]}>Sound Level (dB)</Text>
-          <Text style={[styles.forceCell, styles.forceHeaderText]}>Example Sounds</Text>
-          <Text style={[styles.forceCell, styles.forceHeaderText]}>Risk to Hearing</Text>
-        </View>
-        {DB_LEVELS.map((row, i) => (
-          <View
-            key={row.level}
-            style={[
-              styles.forceRow,
-              i === DB_LEVELS.length - 1 && styles.forceRowLast,
-              row.tint && { backgroundColor: DB_TINTS[row.tint][isDark ? "dark" : "light"] },
-            ]}
-          >
-            <Text style={styles.forceCell}>{row.level}</Text>
-            <Text style={styles.forceCell}>{row.sounds}</Text>
-            <Text style={styles.forceCell}>{row.risk}</Text>
-          </View>
-        ))}
-      </View>
-
-      <Text style={styles.tableNote}>
-        Note: these are absolute sound levels. The Recorder is calibrated to your room — it reads dB above the
-        background noise, so its numbers start at 0 and will be lower than the levels in this table.
-      </Text>
-
-      <Text style={[styles.sectionHeading, styles.spacedTop]}>Why it matters:</Text>
+      <Text style={styles.sectionHeading}>Why it matters:</Text>
       <Text style={styles.formulaCentered}>Every +10 dB ≈ twice as loud</Text>
 
       <Text style={[styles.body, styles.spacedTop]}>
@@ -629,6 +608,34 @@ function Discussion() {
         your ears — and those cells don&apos;t grow back. Measuring and reducing noise pollution helps protect your
         hearing.
       </Text>
+    </View>
+  );
+}
+
+function SoundLevelReferenceTable() {
+  const styles = useWizardStyles(makeStyles);
+  const { isDark } = useTheme();
+  return (
+    <View style={[styles.forceTable, styles.spacedTop]}>
+      <View style={[styles.forceRow, styles.forceHeaderRow]}>
+        <Text style={[styles.forceCell, styles.forceHeaderText]}>Sound Level (dB)</Text>
+        <Text style={[styles.forceCell, styles.forceHeaderText]}>Example Sounds</Text>
+        <Text style={[styles.forceCell, styles.forceHeaderText]}>Risk to Hearing</Text>
+      </View>
+      {DB_LEVELS.map((row, i) => (
+        <View
+          key={row.level}
+          style={[
+            styles.forceRow,
+            i === DB_LEVELS.length - 1 && styles.forceRowLast,
+            row.tint && { backgroundColor: DB_TINTS[row.tint][isDark ? "dark" : "light"] },
+          ]}
+        >
+          <Text style={styles.forceCell}>{row.level}</Text>
+          <Text style={styles.forceCell}>{row.sounds}</Text>
+          <Text style={styles.forceCell}>{row.risk}</Text>
+        </View>
+      ))}
     </View>
   );
 }

@@ -395,9 +395,9 @@ function Instructions({
       <Text style={styles.blockTitle}>Instructions</Text>
       {[
         "Measure the drop height and the toy's mass, and enter them in the Recorder.",
-        "Drop the toy without a parachute and time the fall (baseline test).",
-        "Build a parachute, then drop from the same height and time the fall.",
-        "Use slow-motion video to time how long the toy takes to stop on landing.",
+        "Drop the toy without a parachute and upload the video (baseline test).",
+        "Build a parachute, then drop from the same height and upload the video.",
+        "Use slow-motion video marks to measure fall time and landing contact time.",
         "Redesign and test up to three prototypes within 20 minutes.",
         "Review your results, then upload videos and team reflections.",
       ].map((item, i) => (
@@ -405,6 +405,13 @@ function Instructions({
           {item}
         </Numbered>
       ))}
+
+      {level === "high" && (
+        <>
+          <Text style={styles.blockTitle}>Reference tables</Text>
+          <ParachuteReferenceTables />
+        </>
+      )}
 
       <Text style={styles.blockTitle}>Diagram</Text>
       <ParachuteDiagram />
@@ -1043,46 +1050,9 @@ function Discussion({ level }: { level: Level }) {
 
       {level === "high" && (
         <>
-          <Text style={[styles.blockTitle, styles.spacedTop]}>Forces acting on the toy</Text>
-          <View style={styles.forceTable}>
-            <View style={[styles.forceRow, styles.forceHeaderRow]}>
-              <Text style={[styles.forceCell, styles.forceHeaderText]}>Force</Text>
-              <Text style={[styles.forceCell, styles.forceHeaderText]}>Formula</Text>
-            </View>
-            {FORCES.map((f, i) => (
-              <View
-                key={f.force}
-                style={[styles.forceRow, i === FORCES.length - 1 && styles.forceRowLast]}
-              >
-                <Text style={styles.forceCell}>{f.force}</Text>
-                <Text style={styles.forceCell}>{f.formula}</Text>
-              </View>
-            ))}
-          </View>
-
           <Text style={[styles.sectionHeading, styles.spacedTop]}>Newton’s Second Law</Text>
           <Text style={styles.formulaCentered}>Net force = mass × acceleration</Text>
 
-          <Text style={[styles.blockTitle, styles.spacedTop]}>
-            Typical g-force ranges and injury risk
-          </Text>
-          <View style={styles.forceTable}>
-            <View style={[styles.forceRow, styles.forceHeaderRow]}>
-              <Text style={[styles.forceCell, styles.forceHeaderText]}>G-force</Text>
-              <Text style={[styles.forceCell, styles.forceHeaderText, styles.forceCellWide]}>
-                Likely effects
-              </Text>
-            </View>
-            {GFORCE_RANGES.map((row, i) => (
-              <View
-                key={row.range}
-                style={[styles.forceRow, i === GFORCE_RANGES.length - 1 && styles.forceRowLast]}
-              >
-                <Text style={styles.forceCell}>{row.range}</Text>
-                <Text style={[styles.forceCell, styles.forceCellWide]}>{row.effect}</Text>
-              </View>
-            ))}
-          </View>
           <Text style={styles.fieldHint}>
             Duration matters: a brief spike can be survivable, while sustained g-forces are more
             dangerous.
@@ -1099,6 +1069,49 @@ function Discussion({ level }: { level: Level }) {
         </>
       )}
     </View>
+  );
+}
+
+function ParachuteReferenceTables() {
+  const styles = useWizardStyles(makeStyles);
+  return (
+    <>
+      <Text style={styles.fieldLabel}>Forces acting on the toy</Text>
+      <View style={[styles.forceTable, styles.spacedTopSm]}>
+        <View style={[styles.forceRow, styles.forceHeaderRow]}>
+          <Text style={[styles.forceCell, styles.forceHeaderText]}>Force</Text>
+          <Text style={[styles.forceCell, styles.forceHeaderText]}>Formula</Text>
+        </View>
+        {FORCES.map((f, i) => (
+          <View
+            key={f.force}
+            style={[styles.forceRow, i === FORCES.length - 1 && styles.forceRowLast]}
+          >
+            <Text style={styles.forceCell}>{f.force}</Text>
+            <Text style={styles.forceCell}>{f.formula}</Text>
+          </View>
+        ))}
+      </View>
+
+      <Text style={[styles.fieldLabel, styles.spacedTop]}>Typical g-force ranges and injury risk</Text>
+      <View style={styles.forceTable}>
+        <View style={[styles.forceRow, styles.forceHeaderRow]}>
+          <Text style={[styles.forceCell, styles.forceHeaderText]}>G-force</Text>
+          <Text style={[styles.forceCell, styles.forceHeaderText, styles.forceCellWide]}>
+            Likely effects
+          </Text>
+        </View>
+        {GFORCE_RANGES.map((row, i) => (
+          <View
+            key={row.range}
+            style={[styles.forceRow, i === GFORCE_RANGES.length - 1 && styles.forceRowLast]}
+          >
+            <Text style={styles.forceCell}>{row.range}</Text>
+            <Text style={[styles.forceCell, styles.forceCellWide]}>{row.effect}</Text>
+          </View>
+        ))}
+      </View>
+    </>
   );
 }
 
