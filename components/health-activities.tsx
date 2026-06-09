@@ -277,12 +277,16 @@ function InstructionsContent({
   overview,
   equipment,
   instructions,
+  referenceHeaders,
+  referenceRows,
   diagram,
   diagramArt,
 }: {
   overview: string;
   equipment: string[];
   instructions: string[];
+  referenceHeaders?: string[];
+  referenceRows?: string[][];
   diagram: string[];
   diagramArt?: ReactNode;
 }) {
@@ -304,10 +308,41 @@ function InstructionsContent({
         </Numbered>
       ))}
 
+      {referenceHeaders && referenceRows && (
+        <>
+          <Text style={styles.blockTitle}>Reference table</Text>
+          <ConceptTable headers={referenceHeaders} rows={referenceRows} />
+        </>
+      )}
+
       <Text style={styles.blockTitle}>Diagram</Text>
       {diagramArt}
       {diagram.map((item) => (
         <Bullet key={item}>{item}</Bullet>
+      ))}
+    </View>
+  );
+}
+
+function ConceptTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
+  const styles = useActivityStyles();
+  return (
+    <View style={styles.forceTable}>
+      <View style={[styles.forceRow, styles.forceHeaderRow]}>
+        {headers.map((header) => (
+          <Text key={header} style={[styles.forceCell, styles.forceHeaderText]}>
+            {header}
+          </Text>
+        ))}
+      </View>
+      {rows.map((row, i) => (
+        <View key={row.join("-")} style={[styles.forceRow, i === rows.length - 1 && styles.forceRowLast]}>
+          {row.map((cell) => (
+            <Text key={cell} style={styles.forceCell}>
+              {cell}
+            </Text>
+          ))}
+        </View>
       ))}
     </View>
   );
@@ -461,15 +496,11 @@ function StandardWriteUp<TrialId extends string, Measurement>({
 
 function DiscussionContent({
   heading,
-  headers,
-  rows,
   formulaTitle,
   formula,
   explanation,
 }: {
   heading: string;
-  headers: string[];
-  rows: string[][];
   formulaTitle: string;
   formula: string;
   explanation: string;
@@ -479,26 +510,7 @@ function DiscussionContent({
     <View style={styles.card}>
       <Text style={styles.sectionHeading}>{heading}</Text>
 
-      <View style={styles.forceTable}>
-        <View style={[styles.forceRow, styles.forceHeaderRow]}>
-          {headers.map((header) => (
-            <Text key={header} style={[styles.forceCell, styles.forceHeaderText]}>
-              {header}
-            </Text>
-          ))}
-        </View>
-        {rows.map((row, i) => (
-          <View key={row.join("-")} style={[styles.forceRow, i === rows.length - 1 && styles.forceRowLast]}>
-            {row.map((cell) => (
-              <Text key={cell} style={styles.forceCell}>
-                {cell}
-              </Text>
-            ))}
-          </View>
-        ))}
-      </View>
-
-      <Text style={[styles.sectionHeading, styles.spacedTop]}>{formulaTitle}</Text>
+      <Text style={styles.sectionHeading}>{formulaTitle}</Text>
       <Text style={styles.formulaCentered}>{formula}</Text>
 
       <Text style={[styles.body, styles.spacedTop]}>{explanation}</Text>
@@ -581,6 +593,13 @@ export function HumanPerformanceLabScreen() {
             "Rest and repeat the 15-second pulse count after one minute and two minutes.",
             "Calculate pulse rate in beats per minute and compare the results.",
           ]}
+          referenceHeaders={["Measurement", "What it shows"]}
+          referenceRows={[
+            ["Resting pulse", "Heart supplies oxygen for normal activity"],
+            ["Exercise pulse", "Muscles need more oxygen and glucose"],
+            ["Recovery pulse", "Heart rate gradually returns toward resting"],
+            ["Faster recovery", "Often suggests better cardiovascular efficiency"],
+          ]}
           diagram={[
             "Phone timer starts the 15-second pulse-count window.",
             "Student counts pulse beats during each trial.",
@@ -607,13 +626,6 @@ export function HumanPerformanceLabScreen() {
       renderDiscussion={() => (
         <DiscussionContent
           heading="So why does this happen?"
-          headers={["Measurement", "What it shows"]}
-          rows={[
-            ["Resting pulse", "Heart supplies oxygen for normal activity"],
-            ["Exercise pulse", "Muscles need more oxygen and glucose"],
-            ["Recovery pulse", "Heart rate gradually returns toward resting"],
-            ["Faster recovery", "Often suggests better cardiovascular efficiency"],
-          ]}
           formulaTitle="Pulse rate:"
           formula="Pulse rate (bpm) = beats counted in 15 seconds x 4"
           explanation="Exercise increases muscle oxygen demand, so breathing and heart rate rise. During recovery, demand drops and the cardiovascular system returns toward baseline. Comparing resting, exercise, and recovery pulse shows how the body responds to workload."
@@ -690,6 +702,14 @@ function PerformanceRecorder({
     setRunning(true);
   }
 
+  function clearCount() {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = null;
+    setRunning(false);
+    setElapsed(0);
+    setMeasurements((prev) => ({ ...prev, [trial]: { elapsed: 0, beats: 0 } }));
+  }
+
   function changeBeats(delta: number) {
     setMeasurements((prev) => {
       const current = prev[trial];
@@ -748,6 +768,9 @@ function PerformanceRecorder({
           <Text style={[styles.outlineBtnText, running && styles.primaryBtnText]}>
             {running ? "Stop Count" : elapsed >= maxMs ? "Restart 15s Count" : "Start 15s Count"}
           </Text>
+        </Pressable>
+        <Pressable style={styles.outlineBtn} onPress={clearCount}>
+          <Text style={styles.outlineBtnText}>Clear Count</Text>
         </Pressable>
       </View>
 
@@ -846,6 +869,13 @@ export function ReactionBoardChallengeScreen() {
             "Complete five rounds for each condition.",
             "Compare the average reaction time across all trials.",
           ]}
+          referenceHeaders={["Factor", "Effect on reaction time"]}
+          referenceRows={[
+            ["Sensory input", "Eyes detect the target change"],
+            ["Nervous system", "Brain processes the signal and chooses a response"],
+            ["Motor response", "Muscles move the finger to tap"],
+            ["Distraction or fatigue", "Divides attention or slows processing"],
+          ]}
           diagram={[
             "Wait state appears first.",
             "Target changes to Tap after a random delay.",
@@ -871,13 +901,6 @@ export function ReactionBoardChallengeScreen() {
       renderDiscussion={() => (
         <DiscussionContent
           heading="So why does this happen?"
-          headers={["Factor", "Effect on reaction time"]}
-          rows={[
-            ["Sensory input", "Eyes detect the target change"],
-            ["Nervous system", "Brain processes the signal and chooses a response"],
-            ["Motor response", "Muscles move the finger to tap"],
-            ["Distraction or fatigue", "Divides attention or slows processing"],
-          ]}
           formulaTitle="Reaction time:"
           formula="Reaction time = response tap time - visual cue time"
           explanation="Reaction time measures the delay between seeing a stimulus and producing a movement. Faster times usually mean attention, signal processing, and motor response were more efficient. Distraction and tiredness can slow the pathway; light activity may improve alertness for some students but fatigue can make it worse."
@@ -973,6 +996,16 @@ function ReactionRecorder({
     setMessage(`Saved ${reactionMs} ms. Start another round.`);
   }
 
+  function clearRounds() {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = null;
+    acceptingTapRef.current = false;
+    setActiveCell(null);
+    setStatus("idle");
+    setMessage("Rounds cleared. Press Start Round when you are ready.");
+    setMeasurements((prev) => ({ ...prev, [trial]: { rounds: [] } }));
+  }
+
   const trialIndex = trials.findIndex((t) => t.id === trial);
   const currentTrial = trials[trialIndex];
   const nextTrial = trials[trialIndex + 1];
@@ -1038,6 +1071,9 @@ function ReactionRecorder({
           >
             {rounds.length >= 5 ? "Trial Complete" : "Start Round"}
           </Text>
+        </Pressable>
+        <Pressable style={styles.outlineBtn} onPress={clearRounds}>
+          <Text style={styles.outlineBtnText}>Clear Rounds</Text>
         </Pressable>
       </View>
 
@@ -1170,6 +1206,13 @@ export function BreathingPaceTrainerScreen() {
             "Compare which pattern felt easiest and calmest.",
             "Complete the write-up and discussion.",
           ]}
+          referenceHeaders={["Pattern", "Effect"]}
+          referenceRows={[
+            ["Natural", "Baseline breathing rate and normal oxygen-carbon dioxide exchange"],
+            ["4-4", "Longer breaths can create a steadier rhythm"],
+            ["Box", "Inhale, hold, exhale, hold supports attention and control"],
+            ["4-6", "A longer exhale can support the relaxation response"],
+          ]}
           diagram={[
             "Phone shows the current breathing phase.",
             "Circle expands during inhale.",
@@ -1196,13 +1239,6 @@ export function BreathingPaceTrainerScreen() {
       renderDiscussion={() => (
         <DiscussionContent
           heading="So why does this happen?"
-          headers={["Pattern", "Effect"]}
-          rows={[
-            ["Natural", "Baseline breathing rate and normal oxygen-carbon dioxide exchange"],
-            ["4-4", "Longer breaths can create a steadier rhythm"],
-            ["Box", "Inhale, hold, exhale, hold supports attention and control"],
-            ["4-6", "A longer exhale can support the relaxation response"],
-          ]}
           formulaTitle="Breathing rate:"
           formula="Breathing rate = breaths per minute"
           explanation="Slow paced breathing can reduce breathing rate and encourage a steadier rhythm. Longer exhales are linked with the body's relaxation response, which can lower perceived stress and help the body settle after activity."
@@ -1285,6 +1321,17 @@ function BreathingRecorder({
     setRunning(true);
   }
 
+  function clearTrainer() {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = null;
+    setRunning(false);
+    setElapsed(0);
+    setMeasurements((prev) => ({
+      ...prev,
+      [trial]: { elapsed: 0, cycles: 0, breaths: 0 },
+    }));
+  }
+
   function changeBreaths(delta: number) {
     setMeasurements((prev) => {
       const current = prev[trial];
@@ -1349,6 +1396,9 @@ function BreathingRecorder({
           <Text style={[styles.outlineBtnText, running && styles.primaryBtnText]}>
             {running ? "Stop Trainer" : "Start Trainer"}
           </Text>
+        </Pressable>
+        <Pressable style={styles.outlineBtn} onPress={clearTrainer}>
+          <Text style={styles.outlineBtnText}>Clear Trainer</Text>
         </Pressable>
       </View>
 

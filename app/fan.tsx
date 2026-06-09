@@ -74,6 +74,11 @@ export default function FanScreen() {
   const isLast = step === TABS.length - 1;
 
   const goNext = async () => {
+    if (current === "Recorder" && !allFanVideosAttached(videos)) {
+      Alert.alert("Recorder incomplete", "Upload one video for every fan design before continuing.");
+      return;
+    }
+
     if (isLast) {
       // Persist the activity session and data points to SQLite
       let localSaveMessage = "Activity data was saved locally.";
@@ -180,6 +185,10 @@ export default function FanScreen() {
   );
 }
 
+function allFanVideosAttached(videos: Record<TrialId, string>) {
+  return TRIALS.every((trial) => videos[trial.id] !== "");
+}
+
 /* -------------------------------------------------------------------------- */
 /* Instructions                                                               */
 /* -------------------------------------------------------------------------- */
@@ -213,6 +222,13 @@ function Instructions() {
           {item}
         </Numbered>
       ))}
+
+      <Text style={styles.blockTitle}>Reference table</Text>
+      <StiffnessReferenceTable />
+      <Text style={styles.tableNote}>
+        These are rough classroom values — the point is to see the relative differences between
+        materials.
+      </Text>
 
       <Text style={styles.blockTitle}>Diagram</Text>
       <FanDiagram />
@@ -451,37 +467,37 @@ function Discussion() {
         bend angle (radians) and k is how strongly the material resists bending.
       </Text>
 
-      <View style={[styles.forceTable, styles.spacedTop]}>
-        <View style={[styles.forceRow, styles.forceHeaderRow]}>
-          <Text style={[styles.forceCell, styles.forceHeaderText]}>Material</Text>
-          <Text style={[styles.forceCell, styles.forceHeaderText]}>Thickness (mm)</Text>
-          <Text style={[styles.forceCell, styles.forceHeaderText]}>k (N/rad)</Text>
-          <Text style={[styles.forceCell, styles.forceHeaderText]}>Notes</Text>
-        </View>
-        {K_VALUES.map((row, i) => (
-          <View
-            key={row.material}
-            style={[styles.forceRow, i === K_VALUES.length - 1 && styles.forceRowLast]}
-          >
-            <Text style={styles.forceCell}>{row.material}</Text>
-            <Text style={styles.forceCell}>{row.thickness}</Text>
-            <Text style={styles.forceCell}>{row.k}</Text>
-            <Text style={styles.forceCell}>{row.notes}</Text>
-          </View>
-        ))}
-      </View>
-
-      <Text style={styles.tableNote}>
-        These are rough classroom values — the point is to see the relative differences between
-        materials.
-      </Text>
-
       <Text style={[styles.body, styles.spacedTop]}>
         <Text style={styles.tipLead}>Worked example: </Text>
         thin paper (k = 0.05) bent 30° ≈ 0.524 rad gives F ≈ 0.05 × 0.524 ≈ 0.026 N. Thin cardboard
         (k = 0.5) at the same angle gives F ≈ 0.5 × 0.524 ≈ 0.26 N — so the force needed rises
         strongly with stiffness.
       </Text>
+    </View>
+  );
+}
+
+function StiffnessReferenceTable() {
+  const styles = useWizardStyles(makeStyles);
+  return (
+    <View style={[styles.forceTable, styles.spacedTop]}>
+      <View style={[styles.forceRow, styles.forceHeaderRow]}>
+        <Text style={[styles.forceCell, styles.forceHeaderText]}>Material</Text>
+        <Text style={[styles.forceCell, styles.forceHeaderText]}>Thickness (mm)</Text>
+        <Text style={[styles.forceCell, styles.forceHeaderText]}>k (N/rad)</Text>
+        <Text style={[styles.forceCell, styles.forceHeaderText]}>Notes</Text>
+      </View>
+      {K_VALUES.map((row, i) => (
+        <View
+          key={row.material}
+          style={[styles.forceRow, i === K_VALUES.length - 1 && styles.forceRowLast]}
+        >
+          <Text style={styles.forceCell}>{row.material}</Text>
+          <Text style={styles.forceCell}>{row.thickness}</Text>
+          <Text style={styles.forceCell}>{row.k}</Text>
+          <Text style={styles.forceCell}>{row.notes}</Text>
+        </View>
+      ))}
     </View>
   );
 }

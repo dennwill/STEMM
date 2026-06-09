@@ -49,6 +49,7 @@ export default function EarthquakeScreen() {
   // The earthquake recorder is a single standalone vibration test (no trials),
   // so its evidence video is one slot rather than a per-trial map.
   const [video, setVideo] = useState("");
+  const [recorderBusy, setRecorderBusy] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
   const current = TABS[step];
@@ -56,6 +57,15 @@ export default function EarthquakeScreen() {
   const isLast = step === TABS.length - 1;
 
   const goNext = async () => {
+    if (current === "Recorder" && recorderBusy) {
+      Alert.alert("Recorder running", "Stop the vibration test before continuing.");
+      return;
+    }
+    if (current === "Recorder" && !video) {
+      Alert.alert("Recorder incomplete", "Attach a vibration test video before continuing.");
+      return;
+    }
+
     if (isLast) {
       // Persist the activity session and data points to SQLite. This activity
       // has no per-trial measurement (the Recorder is a standalone vibration
@@ -135,7 +145,9 @@ export default function EarthquakeScreen() {
           {current === "Prediction" && (
             <Prediction value={prediction} onChange={setPrediction} />
           )}
-          {current === "Recorder" && <Recorder video={video} setVideo={setVideo} />}
+          {current === "Recorder" && (
+            <Recorder video={video} setVideo={setVideo} setRecorderBusy={setRecorderBusy} />
+          )}
           {current === "Write-Up" && (
             <WriteUp
               answers={answers}
@@ -271,9 +283,11 @@ function Prediction({
 function Recorder({
   video,
   setVideo,
+  setRecorderBusy,
 }: {
   video: string;
   setVideo: Dispatch<SetStateAction<string>>;
+  setRecorderBusy: Dispatch<SetStateAction<boolean>>;
 }) {
   const { palette: c } = useTheme();
   const styles = useWizardStyles(makeStyles);
@@ -301,8 +315,13 @@ function Recorder({
     return () => {
       Vibration.cancel();
       stopSensors();
+      setRecorderBusy(false);
     };
-  }, [stopSensors]);
+  }, [setRecorderBusy, stopSensors]);
+
+  useEffect(() => {
+    setRecorderBusy(vibrating);
+  }, [setRecorderBusy, vibrating]);
 
   function toggle() {
     if (vibrating) {

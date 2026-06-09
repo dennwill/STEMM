@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useEventListener } from "expo";
 import { useVideoPlayer, VideoView } from "expo-video";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { pickVideoFromLibrary } from "@/lib/pickVideo";
@@ -24,13 +25,37 @@ type VideoEvidenceProps = {
 export function VideoEvidence({ value, onChange, label = "Upload video" }: VideoEvidenceProps) {
   const styles = useWizardStyles(makeStyles);
   const { palette: c } = useTheme();
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   // expo-video creates the player once; keep its source in sync when the parent
   // swaps or clears the video for this slot.
   const player = useVideoPlayer(value || null, (p) => {
     p.loop = false;
+    p.timeUpdateEventInterval = 0.1;
   });
+
+  useEventListener(player, "timeUpdate", ({ currentTime }) => {
+    setCurrentTime(Number.isFinite(currentTime) ? currentTime : 0);
+  });
+
+  useEventListener(player, "playingChange", ({ isPlaying }) => {
+    setIsPlaying(isPlaying);
+  });
+
+  useEventListener(player, "sourceLoad", ({ duration }) => {
+    setDuration(Number.isFinite(duration) ? duration : 0);
+  });
+
+  useEventListener(player, "playToEnd", () => {
+    setIsPlaying(false);
+  });
+
   useEffect(() => {
+    setCurrentTime(0);
+    setDuration(0);
+    setIsPlaying(false);
     // replaceAsync loads the asset off the main thread (replace() is synchronous
     // on iOS and is being deprecated). Swallow rejections — an unreadable URI or
     // a player released on unmount just leaves the player empty.
@@ -47,6 +72,13 @@ export function VideoEvidence({ value, onChange, label = "Upload video" }: Video
       { text: "Cancel", style: "cancel" },
       { text: "Clear", style: "destructive", onPress: () => onChange("") },
     ]);
+  }
+
+  function handleResetStopwatch() {
+    player.pause();
+    player.currentTime = 0;
+    setCurrentTime(0);
+    setIsPlaying(false);
   }
 
   if (!value) {
@@ -67,6 +99,18 @@ export function VideoEvidence({ value, onChange, label = "Upload video" }: Video
         nativeControls
         allowsFullscreen
       />
+      <View style={styles.stopwatchRow}>
+        <View style={styles.timePill}>
+          <Ionicons name="stopwatch-outline" size={16} color={c.primary} />
+          <Text style={styles.timeText}>{formatVideoTime(currentTime)}</Text>
+          <Text style={styles.durationText}>/ {formatVideoTime(duration)}</Text>
+          <View style={[styles.playStateDot, isPlaying && styles.playStateDotActive]} />
+        </View>
+        <Pressable style={styles.resetBtn} onPress={handleResetStopwatch}>
+          <Ionicons name="refresh" size={16} color={c.primary} />
+          <Text style={styles.resetText}>Reset</Text>
+        </Pressable>
+      </View>
       <View style={styles.actions}>
         <Pressable style={styles.actionBtn} onPress={handlePick}>
           <Ionicons name="swap-horizontal" size={16} color={c.primary} />
@@ -79,6 +123,14 @@ export function VideoEvidence({ value, onChange, label = "Upload video" }: Video
       </View>
     </View>
   );
+}
+
+function formatVideoTime(totalSeconds: number) {
+  const safeSeconds = Number.isFinite(totalSeconds) ? Math.max(0, totalSeconds) : 0;
+  const minutes = Math.floor(safeSeconds / 60);
+  const seconds = Math.floor(safeSeconds % 60);
+  const tenths = Math.floor((safeSeconds % 1) * 10);
+  return `${minutes}:${seconds.toString().padStart(2, "0")}.${tenths}`;
 }
 
 const makeStyles = (c: Palette, accent: WizardAccent) =>
@@ -111,6 +163,45 @@ const makeStyles = (c: Palette, accent: WizardAccent) =>
       borderRadius: 8,
       backgroundColor: "#000",
     },
+    stopwatchRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 10,
+    },
+    timePill: {
+      flex: 1,
+      minHeight: 40,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      borderWidth: 1,
+      borderColor: accent.border,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+    },
+    timeText: { color: c.primary, fontSize: 16, fontWeight: "800", fontVariant: ["tabular-nums"] },
+    durationText: { color: c.muted, fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"] },
+    playStateDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 999,
+      backgroundColor: accent.border,
+      marginLeft: "auto",
+    },
+    playStateDotActive: { backgroundColor: c.primary },
+    resetBtn: {
+      minHeight: 40,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      borderWidth: 1,
+      borderColor: accent.border,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+    },
+    resetText: { color: c.primary, fontSize: 14, fontWeight: "700" },
     actions: { flexDirection: "row", gap: 12 },
     actionBtn: {
       flex: 1,
