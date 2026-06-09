@@ -65,6 +65,7 @@ const TRIALS = [
   },
 ] as const;
 type TrialId = (typeof TRIALS)[number]["id"];
+type Zone = "Quiet" | "Moderate" | "Loud";
 
 export default function SoundScreen() {
   const router = useRouter();
@@ -82,6 +83,9 @@ export default function SoundScreen() {
   const [videos, setVideos] = useState<Record<TrialId, string>>(
     Object.fromEntries(TRIALS.map((t) => [t.id, ""])) as Record<TrialId, string>,
   );
+  const [locations, setLocations] = useState<Record<TrialId, string>>(
+    Object.fromEntries(TRIALS.map((t) => [t.id, ""])) as Record<TrialId, string>,
+  );
   const [recorderBusy, setRecorderBusy] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
@@ -94,8 +98,11 @@ export default function SoundScreen() {
       Alert.alert("Recorder running", "Stop the decibel meter before continuing.");
       return;
     }
-    if (current === "Recorder" && !allSoundLevelsRecorded(levels)) {
-      Alert.alert("Recorder incomplete", "Measure and save a sound level for every action before continuing.");
+    if (current === "Recorder" && !allSoundMeasurementsRecorded(levels, locations)) {
+      Alert.alert(
+        "Recorder incomplete",
+        "Measure and save a sound level and classroom location for every action before continuing.",
+      );
       return;
     }
 
@@ -110,17 +117,25 @@ export default function SoundScreen() {
           discussion_reflection: reflection || null,
         });
 
+        const measuredLevels = TRIALS.map((trial) => levels[trial.id]);
+        const maxLevel = Math.max(...measuredLevels);
+        const predictionWasCorrect = prediction.choice
+          ? TRIALS.some((trial) => levels[trial.id] === maxLevel && trial.short === prediction.choice)
+          : null;
+
         // Save each action's measured level as a data point
         for (const trial of TRIALS) {
           const level = levels[trial.id];
+          const location = locations[trial.id].trim();
+          const zone = classifyZone(level);
           await createDataPoint(db, {
             session_id: sessionId,
             attempt_number: TRIALS.indexOf(trial) + 1,
             action_or_design: trial.title,
             prediction_value: prediction.choice === trial.short ? "predicted loudest" : null,
-            outcome_value: level > 0 ? formatDb(level) : null,
-            prediction_correct: prediction.choice === trial.short && level > 0 ? true : null,
-            media_file_path: null,
+            outcome_value: level > 0 ? `${formatDb(level)} · ${zone} zone · ${location}` : null,
+            prediction_correct: prediction.choice === trial.short ? predictionWasCorrect : null,
+            media_file_path: videos[trial.id] || null,
           });
         }
       } catch (err) {
@@ -171,12 +186,15 @@ export default function SoundScreen() {
               setLevels={setLevels}
               videos={videos}
               setVideos={setVideos}
+              locations={locations}
+              setLocations={setLocations}
               setRecorderBusy={setRecorderBusy}
             />
           )}
           {current === "Write-Up" && (
             <WriteUp
               levels={levels}
+              locations={locations}
               answers={answers}
               setAnswers={setAnswers}
               reflection={reflection}
@@ -203,8 +221,14 @@ export default function SoundScreen() {
   );
 }
 
-function allSoundLevelsRecorded(levels: Record<TrialId, number>) {
-  return TRIALS.every((trial) => levels[trial.id] > 0);
+function allSoundMeasurementsRecorded(levels: Record<TrialId, number>, locations: Record<TrialId, string>) {
+  return TRIALS.every((trial) => levels[trial.id] > 0 && locations[trial.id].trim().length > 0);
+}
+
+function classifyZone(level: number): Zone {
+  if (level >= 60) return "Loud";
+  if (level >= 30) return "Moderate";
+  return "Quiet";
 }
 
 /* -------------------------------------------------------------------------- */
@@ -311,6 +335,8 @@ type LevelsProps = {
   setLevels: Dispatch<SetStateAction<Record<TrialId, number>>>;
   videos: Record<TrialId, string>;
   setVideos: Dispatch<SetStateAction<Record<TrialId, string>>>;
+  locations: Record<TrialId, string>;
+  setLocations: Dispatch<SetStateAction<Record<TrialId, string>>>;
   setRecorderBusy: Dispatch<SetStateAction<boolean>>;
 };
 
@@ -320,7 +346,7 @@ type LevelsProps = {
 // sound rises above it. Readings therefore always begin at 0.
 const CALIBRATION_SAMPLES = 5; // ~0.5s of ambient at the 100ms metering interval
 
-function Recorder({ levels, setLevels, videos, setVideos, setRecorderBusy }: LevelsProps) {
+function Recorder({ levels, setLevels, videos, setVideos, locations, setLocations, setRecorderBusy }: LevelsProps) {
   const { palette: c } = useTheme();
   const styles = useWizardStyles(makeStyles);
   const meteringSupported = Platform.OS !== "web";
@@ -455,6 +481,20 @@ function Recorder({ levels, setLevels, videos, setVideos, setRecorderBusy }: Lev
 
       <VideoEvidence value={videos[trial]} onChange={(uri) => setVideos((prev) => ({ ...prev, [trial]: uri }))} />
 
+      <View style={styles.card}>
+        <Text style={styles.fieldLabel}>Measurement location</Text>
+        <TextInput
+          style={styles.fieldInput}
+          placeholder="e.g. reading corner, door, group table"
+          placeholderTextColor={c.muted}
+          value={locations[trial]}
+          onChangeText={(location) => setLocations((prev) => ({ ...prev, [trial]: location }))}
+          multiline
+          textAlignVertical="top"
+        />
+        <Text style={styles.fieldHint}>Use a classroom location so your team can map loud and quiet zones.</Text>
+      </View>
+
       <View style={[styles.card, styles.timerCard]}>
         <Ionicons name="mic" size={40} color={c.primary} style={styles.meterIcon} />
         <Text style={styles.timer}>{running || display > 0 ? `${display} dB` : "—"}</Text>
@@ -471,7 +511,7 @@ function Recorder({ levels, setLevels, videos, setVideos, setRecorderBusy }: Lev
           <Text style={styles.outlineBtnText}>Clear Reading</Text>
         </Pressable>
         {!meteringSupported ? (
-          <Text style={styles.meterCaption}>Live metering isn&apos;t available on web — open the app on a phone.</Text>
+          <Text style={styles.meterCaption}>Live metering is not available on web. Open the app on a phone.</Text>
         ) : calibrating ? (
           <Text style={styles.meterCaption}>Calibrating to the room… keep quiet.</Text>
         ) : (
@@ -486,15 +526,57 @@ function Recorder({ levels, setLevels, videos, setVideos, setRecorderBusy }: Lev
           </Text>
         ) : (
           <Text style={styles.switchHint}>
-            ✓ All actions measured. Continue to the Write-Up step when you&apos;re ready.
+            ✓ All actions measured. Continue to the Write-Up step when you are ready.
           </Text>
         ))}
+
+      <ZoneMapSummary levels={levels} locations={locations} activeTrial={trial} />
     </>
   );
 }
 
 function formatDb(n: number) {
   return `${n} dB`;
+}
+
+function ZoneMapSummary({
+  levels,
+  locations,
+  activeTrial,
+}: {
+  levels: Record<TrialId, number>;
+  locations: Record<TrialId, string>;
+  activeTrial: TrialId;
+}) {
+  const styles = useWizardStyles(makeStyles);
+  return (
+    <View style={styles.zonePanel}>
+      <Text style={styles.zonePanelTitle}>Classroom loud / quiet zone map</Text>
+      <View style={styles.zoneGrid}>
+        {TRIALS.map((trial) => {
+          const level = levels[trial.id];
+          const zone = classifyZone(level);
+          const location = locations[trial.id].trim();
+          return (
+            <View
+              key={trial.id}
+              style={[
+                styles.zoneCard,
+                level > 0 && zone === "Quiet" && styles.zoneQuiet,
+                level > 0 && zone === "Moderate" && styles.zoneModerate,
+                level > 0 && zone === "Loud" && styles.zoneLoud,
+                activeTrial === trial.id && styles.zoneCardActive,
+              ]}
+            >
+              <Text style={styles.zoneTitle}>{trial.short}</Text>
+              <Text style={styles.zoneLocation}>{location || "Location needed"}</Text>
+              <Text style={styles.zoneReading}>{level > 0 ? `${formatDb(level)} · ${zone}` : "No reading yet"}</Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -506,18 +588,21 @@ function formatDb(n: number) {
 const WRITEUP_QUESTIONS = [
   { label: "Prediction (louder or softer than the others?)", options: ["Louder", "Softer"] },
   { label: "Outcome (dB)", auto: true },
+  { label: "Location / zone", locationAuto: true },
   { label: "Were you right?", options: ["Yes", "No"] },
+  { label: "Any surprises?" },
 ];
 
 type WriteUpProps = {
   levels: Record<TrialId, number>;
+  locations: Record<TrialId, string>;
   answers: Record<string, string>;
   setAnswers: Dispatch<SetStateAction<Record<string, string>>>;
   reflection: string;
   setReflection: (v: string) => void;
 };
 
-function WriteUp({ levels, answers, setAnswers, reflection, setReflection }: WriteUpProps) {
+function WriteUp({ levels, locations, answers, setAnswers, reflection, setReflection }: WriteUpProps) {
   const { palette: c } = useTheme();
   const styles = useWizardStyles(makeStyles);
   return (
@@ -530,10 +615,19 @@ function WriteUp({ levels, answers, setAnswers, reflection, setReflection }: Wri
           {WRITEUP_QUESTIONS.map((q, c) => {
             const key = `${trial.id}-${c}`;
             const measured = levels[trial.id];
+            const location = locations[trial.id].trim();
+            const zone = measured > 0 ? classifyZone(measured) : null;
             // Auto-fill the dB question from the Recorder until the user edits it.
             const override = answers[key];
             const showMeasured = q.auto && override === undefined && measured > 0;
-            const value = override ?? (q.auto && measured > 0 ? formatDb(measured) : "");
+            const showLocation = q.locationAuto && override === undefined && location && zone;
+            const autoValue =
+              q.auto && measured > 0
+                ? formatDb(measured)
+                : q.locationAuto && location && zone
+                  ? `${location} · ${zone} zone`
+                  : "";
+            const value = override ?? autoValue;
             return (
               <View key={key} style={styles.field}>
                 <Text style={styles.fieldLabel}>{q.label}</Text>
@@ -562,6 +656,7 @@ function WriteUp({ levels, answers, setAnswers, reflection, setReflection }: Wri
                       textAlignVertical="top"
                     />
                     {showMeasured && <Text style={styles.fieldHint}>Measured in the Recorder — edit if needed.</Text>}
+                    {showLocation && <Text style={styles.fieldHint}>Mapped from the Recorder — edit if needed.</Text>}
                   </>
                 )}
               </View>
@@ -572,8 +667,8 @@ function WriteUp({ levels, answers, setAnswers, reflection, setReflection }: Wri
 
       <View style={styles.card}>
         <Text style={styles.promptTitle}>
-          Were your predictions correct? Which action was the loudest, and which parts of the classroom were the
-          noisiest?
+          Were your predictions correct? Which action was the loudest, which parts of the classroom were the noisiest,
+          and should your class wear ear muffs in any area?
         </Text>
         <TextInput
           style={styles.textArea}
@@ -604,7 +699,11 @@ const DB_TINTS: Record<TintKey, { light: string; dark: string }> = {
 const DB_LEVELS: { level: string; sounds: string; risk: string; tint?: TintKey }[] = [
   { level: "0–30 dB", sounds: "Whisper, quiet library", risk: "No risk" },
   { level: "30–60 dB", sounds: "Normal conversation, classroom noise", risk: "Safe for long periods" },
-  { level: "60–85 dB", sounds: "Busy traffic, vacuum cleaner", risk: "Long exposure can cause fatigue" },
+  {
+    level: "60–85 dB",
+    sounds: "Busy traffic, vacuum cleaner",
+    risk: "Generally safe, but long exposure can cause fatigue",
+  },
   {
     level: "85–90 dB",
     sounds: "Lawn mower, loud classroom, heavy traffic",
@@ -646,15 +745,23 @@ function Discussion() {
     <View style={styles.card}>
       <Text style={styles.sectionHeading}>So why does this happen?</Text>
 
+      <Text style={styles.body}>
+        Sound intensity varies depending on energy and surfaces. Prolonged loud noise can impact health and
+        concentration.
+      </Text>
+
       <Text style={styles.sectionHeading}>Why it matters:</Text>
       <Text style={styles.formulaCentered}>Every +10 dB ≈ twice as loud</Text>
 
       <Text style={[styles.body, styles.spacedTop]}>
         Sound is measured in decibels (dB) on a logarithmic scale, so every extra 10 dB sounds roughly twice as loud and
         carries far more energy. Louder sounds, and longer exposure to them, do more damage to the tiny hair cells in
-        your ears — and those cells don&apos;t grow back. Measuring and reducing noise pollution helps protect your
-        hearing.
+        your ears — and those cells do not grow back. Measuring and reducing noise pollution helps protect your hearing.
       </Text>
+
+      <Text style={styles.sectionHeading}>Curriculum links</Text>
+      <Bullet>ACSSU073 – Sound and energy</Bullet>
+      <Bullet>ACPPS053 – Health and wellbeing</Bullet>
     </View>
   );
 }
@@ -831,6 +938,29 @@ const makeStyles = (c: Palette, ACCENT: WizardAccent) =>
     meterIcon: { marginBottom: 12 },
     timer: { color: c.inputText, fontSize: 56, fontWeight: "800", marginBottom: 20 },
     meterCaption: { color: c.muted, fontSize: 13, marginTop: 14, textAlign: "center" },
+    zonePanel: {
+      backgroundColor: c.white,
+      borderRadius: 16,
+      padding: 16,
+      marginTop: 20,
+      boxShadow: "0px 1px 6px rgba(0, 0, 0, 0.05)",
+    },
+    zonePanelTitle: { color: c.primary, fontSize: 16, fontWeight: "800", marginBottom: 12 },
+    zoneGrid: { gap: 10 },
+    zoneCard: {
+      borderWidth: 1,
+      borderColor: ACCENT.border,
+      borderRadius: 10,
+      padding: 12,
+      backgroundColor: c.bg,
+    },
+    zoneCardActive: { borderColor: c.primary, borderWidth: 2 },
+    zoneQuiet: { backgroundColor: "#DDEFE2", borderColor: "#79A885" },
+    zoneModerate: { backgroundColor: "#FFF0C2", borderColor: "#C59728" },
+    zoneLoud: { backgroundColor: "#FAD6D1", borderColor: "#C15B50" },
+    zoneTitle: { color: c.inputText, fontSize: 14, fontWeight: "800", marginBottom: 4 },
+    zoneLocation: { color: c.inputText, fontSize: 14, lineHeight: 20 },
+    zoneReading: { color: c.muted, fontSize: 13, fontWeight: "700", marginTop: 6 },
 
     primaryBtn: {
       backgroundColor: c.primary,
