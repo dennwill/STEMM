@@ -73,16 +73,28 @@ export function PrimaryButton({
   label,
   onPress,
   disabled,
+  id,
+  nativeID,
+  testID,
+  accessibilityLabel,
 }: {
   label: string;
   onPress: () => void;
   disabled?: boolean;
+  id?: string;
+  nativeID?: string;
+  testID?: string;
+  accessibilityLabel?: string;
 }) {
   const styles = useThemedStyles(makeStyles);
   return (
     <PressableScale
       onPress={onPress}
       disabled={disabled}
+      id={id}
+      nativeID={nativeID}
+      testID={testID}
+      accessibilityLabel={accessibilityLabel}
       style={[styles.primaryBtn, disabled && styles.btnDisabled]}
     >
       <Text style={styles.primaryBtnText}>{label}</Text>

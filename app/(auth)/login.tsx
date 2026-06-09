@@ -43,6 +43,10 @@ export default function LoginScreen() {
         <Text style={fieldStyles.label}>Email</Text>
         <TextInput
           style={fieldStyles.input}
+          id="login_email_input"
+          nativeID="login_email_input"
+          testID="login_email_input"
+          accessibilityLabel="login_email_input"
           placeholder="johndoe@example.com"
           placeholderTextColor="#6b6b6b"
           value={email}
@@ -56,6 +60,10 @@ export default function LoginScreen() {
         <Text style={fieldStyles.label}>Password</Text>
         <TextInput
           style={fieldStyles.input}
+          id="login_password_input"
+          nativeID="login_password_input"
+          testID="login_password_input"
+          accessibilityLabel="login_password_input"
           placeholder="••••••"
           placeholderTextColor="#6b6b6b"
           value={password}
@@ -83,6 +91,10 @@ export default function LoginScreen() {
           label={submitting ? "Signing in…" : "Log In →"}
           onPress={login}
           disabled={submitting}
+          id="login_button"
+          nativeID="login_button"
+          testID="login_button"
+          accessibilityLabel="login_button"
         />
 
         <Pressable onPress={() => router.replace("/(auth)/register" as any)}>
