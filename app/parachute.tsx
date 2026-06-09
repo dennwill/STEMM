@@ -22,6 +22,8 @@ import {
   createDataPoint,
 } from "@/lib/crud";
 import { ParachuteDiagram } from "@/components/ActivityDiagrams";
+import { RatingCard } from "@/components/RatingCard";
+import { captureSessionLocation } from "@/lib/location";
 import { LOCAL_ACTIVITY_IDS, LOCAL_TEAM_ID } from "@/lib/db";
 import { SchoolLevel as Level, useSchoolLevel } from "@/lib/gradeLevel";
 import { pickVideoFromLibrary } from "@/lib/pickVideo";
@@ -98,6 +100,7 @@ export default function ParachuteScreen() {
   // steps doesn't unmount and discard what the user has entered.
   const [prediction, setPrediction] = useState<PredictionValue>({ choice: "", reason: "" });
   const [reflection, setReflection] = useState("");
+  const [rating, setRating] = useState(0);
   const [setup, setSetup] = useState<Setup>({ heightM: "", massKg: "" });
   const [measures, setMeasures] = useState<Record<TrialId, Measure>>(
     Object.fromEntries(TRIALS.map((t) => [t.id, { fallMs: 0, contactMs: 0 }])) as Record<
@@ -130,6 +133,7 @@ export default function ParachuteScreen() {
       // Persist the activity session and data points to SQLite
       let localSaveMessage = "Activity data was saved locally.";
       try {
+        const loc = await captureSessionLocation();
         const sessionId = await createChallengeSession(db, {
           team_id: LOCAL_TEAM_ID,
           activity_id: LOCAL_ACTIVITY_IDS.parachute,
@@ -137,6 +141,9 @@ export default function ParachuteScreen() {
             ? `${prediction.choice}: ${prediction.reason}`
             : null,
           discussion_reflection: reflection || null,
+          rating: rating || null,
+          gps_lat: loc?.lat ?? null,
+          gps_lng: loc?.lng ?? null,
         });
 
         const heightM = num(setup.heightM);
@@ -238,6 +245,7 @@ export default function ParachuteScreen() {
             />
           )}
           {current === "Discussion" && <Discussion level={level} />}
+          {current === "Discussion" && <RatingCard value={rating} onChange={setRating} />}
         </ScrollView>
 
         <View style={styles.footer}>

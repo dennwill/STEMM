@@ -97,6 +97,9 @@ describe('crud module exports', () => {
       activity_id: 1,
       prediction_text: null,
       discussion_reflection: null,
+      rating: null,
+      gps_lat: null,
+      gps_lng: null,
       completed_at: '2026-01-01',
     };
     expect(session.id).toBe(1);

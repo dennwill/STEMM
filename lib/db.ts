@@ -17,7 +17,7 @@ export const LOCAL_ACTIVITY_IDS = {
   breathing: 7,
 } as const;
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase): Promise<void> {
   await db.execAsync('PRAGMA journal_mode = WAL;');
@@ -105,6 +105,18 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase): Promise<void> {
         (5, 'Health', 'Human Performance Lab', NULL),
         (6, 'Health', 'Reaction Board Challenge', NULL),
         (7, 'Health', 'Breathing Pace Trainer', NULL);
+    `);
+  }
+
+  if (currentVersion < 3) {
+    // Add per-session "rate the activity" and GPS location tagging columns
+    // (required by the app concept: students rate each activity and results are
+    // GPS-tagged). All nullable so the columns add cleanly to existing installs
+    // and a session can be saved without a rating or a location fix.
+    await db.execAsync(`
+      ALTER TABLE challenge_sessions ADD COLUMN rating INTEGER;
+      ALTER TABLE challenge_sessions ADD COLUMN gps_lat REAL;
+      ALTER TABLE challenge_sessions ADD COLUMN gps_lng REAL;
     `);
   }
 

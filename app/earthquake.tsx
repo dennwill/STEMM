@@ -1,8 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Accelerometer, Gyroscope } from "expo-sensors";
 import { useSQLiteContext } from "expo-sqlite";
-import { Dispatch, SetStateAction, useCallback, useEffect, useRef, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -19,22 +18,55 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { VideoEvidence } from "@/components/VideoEvidence";
 import { EarthquakeDiagram } from "@/components/ActivityDiagrams";
+import { RatingCard } from "@/components/RatingCard";
 import { createChallengeSession, createDataPoint } from "@/lib/crud";
 import { LOCAL_ACTIVITY_IDS, LOCAL_TEAM_ID } from "@/lib/db";
+import { captureSessionLocation } from "@/lib/location";
 import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
 import { Palette, useTheme, useWizardStyles, WizardAccent } from "@/lib/theme";
+import { useMotionMeter } from "@/lib/useMotionMeter";
 
 const TABS = ["Instructions", "Prediction", "Recorder", "Write-Up", "Discussion"] as const;
 
-// The four fold designs the activity compares. Used by the Prediction chips and
-// the Write-Up cards. The Recorder is a standalone vibration test, so it does not
-// use this list.
+// The four fold designs the activity compares. Shared by the Prediction chips,
+// the per-design Recorder (each design runs its own vibration test) and the
+// Write-Up cards so the three steps line up 1:1.
 const TRIALS = [
-  { id: "design1", short: "Design 1", title: "Design 1", note: "e.g. 4 folds + 4 pillars" },
-  { id: "design2", short: "Design 2", title: "Design 2", note: "e.g. 10 folds + 4 pillars" },
-  { id: "design3", short: "Design 3", title: "Design 3", note: "e.g. 3 folds and 6 pillars" },
-  { id: "design4", short: "Design 4", title: "Design 4", note: "" },
+  {
+    id: "design1",
+    short: "Design 1",
+    title: "Design 1",
+    note: "e.g. 4 folds + 4 pillars",
+    instruction:
+      "Build this design, place the phone in the centre, then start the vibration test and watch how much it shakes. Upload a clip of the test.",
+  },
+  {
+    id: "design2",
+    short: "Design 2",
+    title: "Design 2",
+    note: "e.g. 10 folds + 4 pillars",
+    instruction:
+      "Rebuild with more folds, re-centre the phone, run the vibration test again and upload a clip.",
+  },
+  {
+    id: "design3",
+    short: "Design 3",
+    title: "Design 3",
+    note: "e.g. 3 folds and 6 pillars",
+    instruction:
+      "Try a different pillar layout, re-centre the phone, run the test and upload a clip.",
+  },
+  {
+    id: "design4",
+    short: "Design 4",
+    title: "Design 4",
+    note: "",
+    instruction: "Test your final design from the same setup, run the test and upload a clip.",
+  },
 ] as const;
+type TrialId = (typeof TRIALS)[number]["id"];
+
+type Measure = { score: number };
 
 export default function EarthquakeScreen() {
   const router = useRouter();
@@ -46,9 +78,15 @@ export default function EarthquakeScreen() {
   // steps doesn't unmount and discard what the user has entered.
   const [prediction, setPrediction] = useState<PredictionValue>({ choice: "", reason: "" });
   const [reflection, setReflection] = useState("");
-  // The earthquake recorder is a single standalone vibration test (no trials),
-  // so its evidence video is one slot rather than a per-trial map.
-  const [video, setVideo] = useState("");
+  const [rating, setRating] = useState(0);
+  // Each design runs its own vibration test, so videos and the measured movement
+  // score are per-trial maps (matching the other engineering activities).
+  const [videos, setVideos] = useState<Record<TrialId, string>>(
+    Object.fromEntries(TRIALS.map((t) => [t.id, ""])) as Record<TrialId, string>,
+  );
+  const [measures, setMeasures] = useState<Record<TrialId, Measure>>(
+    Object.fromEntries(TRIALS.map((t) => [t.id, { score: 0 }])) as Record<TrialId, Measure>,
+  );
   const [recorderBusy, setRecorderBusy] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
@@ -61,17 +99,19 @@ export default function EarthquakeScreen() {
       Alert.alert("Recorder running", "Stop the vibration test before continuing.");
       return;
     }
-    if (current === "Recorder" && !video) {
-      Alert.alert("Recorder incomplete", "Attach a vibration test video before continuing.");
+    if (current === "Recorder" && !allDesignsTested(measures, videos)) {
+      Alert.alert(
+        "Recorder incomplete",
+        "Run the vibration test and upload a clip for every design before continuing.",
+      );
       return;
     }
 
     if (isLast) {
-      // Persist the activity session and data points to SQLite. This activity
-      // has no per-trial measurement (the Recorder is a standalone vibration
-      // test), so each design row just records the predicted choice.
+      // Persist the activity session and per-design data points to SQLite.
       let localSaveMessage = "Activity data was saved locally.";
       try {
+        const loc = await captureSessionLocation();
         const sessionId = await createChallengeSession(db, {
           team_id: LOCAL_TEAM_ID,
           activity_id: LOCAL_ACTIVITY_IDS.earthquake,
@@ -79,17 +119,24 @@ export default function EarthquakeScreen() {
             ? `${prediction.choice}: ${prediction.reason}`
             : null,
           discussion_reflection: reflection || null,
+          rating: rating || null,
+          gps_lat: loc?.lat ?? null,
+          gps_lng: loc?.lng ?? null,
         });
 
+        // The steadiest design is the one with the lowest movement score.
+        const bestShort = steadiestDesign(measures);
         for (const trial of TRIALS) {
+          const score = measures[trial.id].score;
+          const isPredicted = prediction.choice === trial.short;
           await createDataPoint(db, {
             session_id: sessionId,
             attempt_number: TRIALS.indexOf(trial) + 1,
             action_or_design: trial.title,
-            prediction_value: prediction.choice === trial.short ? "predicted most stable" : null,
-            outcome_value: null,
-            prediction_correct: null,
-            media_file_path: null,
+            prediction_value: isPredicted ? "predicted most stable" : null,
+            outcome_value: score > 0 ? formatScore(score) : null,
+            prediction_correct: isPredicted && bestShort ? prediction.choice === bestShort : null,
+            media_file_path: videos[trial.id] || null,
           });
         }
       } catch (err) {
@@ -146,10 +193,17 @@ export default function EarthquakeScreen() {
             <Prediction value={prediction} onChange={setPrediction} />
           )}
           {current === "Recorder" && (
-            <Recorder video={video} setVideo={setVideo} setRecorderBusy={setRecorderBusy} />
+            <Recorder
+              videos={videos}
+              setVideos={setVideos}
+              measures={measures}
+              setMeasures={setMeasures}
+              setRecorderBusy={setRecorderBusy}
+            />
           )}
           {current === "Write-Up" && (
             <WriteUp
+              measures={measures}
               answers={answers}
               setAnswers={setAnswers}
               reflection={reflection}
@@ -157,6 +211,7 @@ export default function EarthquakeScreen() {
             />
           )}
           {current === "Discussion" && <Discussion />}
+          {current === "Discussion" && <RatingCard value={rating} onChange={setRating} />}
         </ScrollView>
 
         <View style={styles.footer}>
@@ -280,143 +335,132 @@ function Prediction({
 /* Recorder                                                                   */
 /* -------------------------------------------------------------------------- */
 
-function Recorder({
-  video,
-  setVideo,
-  setRecorderBusy,
-}: {
-  video: string;
-  setVideo: Dispatch<SetStateAction<string>>;
+function allDesignsTested(measures: Record<TrialId, Measure>, videos: Record<TrialId, string>) {
+  return TRIALS.every((t) => measures[t.id].score > 0 && videos[t.id] !== "");
+}
+
+// The steadiest design is the one that shook the least (lowest movement score).
+function steadiestDesign(measures: Record<TrialId, Measure>): string | null {
+  const tested = TRIALS.filter((t) => measures[t.id].score > 0);
+  if (!tested.length) return null;
+  return tested.reduce((best, t) => (measures[t.id].score < measures[best.id].score ? t : best))
+    .short;
+}
+
+function formatScore(score: number) {
+  return `movement ${score.toFixed(3)} g (lower = steadier)`;
+}
+
+type RecorderProps = {
+  videos: Record<TrialId, string>;
+  setVideos: Dispatch<SetStateAction<Record<TrialId, string>>>;
+  measures: Record<TrialId, Measure>;
+  setMeasures: Dispatch<SetStateAction<Record<TrialId, Measure>>>;
   setRecorderBusy: Dispatch<SetStateAction<boolean>>;
-}) {
+};
+
+function Recorder({ videos, setVideos, measures, setMeasures, setRecorderBusy }: RecorderProps) {
   const { palette: c } = useTheme();
   const styles = useWizardStyles(makeStyles);
-  const [vibrating, setVibrating] = useState(false);
-  const [accelData, setAccelData] = useState({ x: 0, y: 0, z: 0 });
-  const [gyroData, setGyroData] = useState({ x: 0, y: 0, z: 0 });
-  const subscription = useRef<ReturnType<typeof Accelerometer.addListener> | null>(null);
-  const gyroSub = useRef<ReturnType<typeof Gyroscope.addListener> | null>(null);
+  const [trial, setTrial] = useState<TrialId>(TRIALS[0].id);
+  const { running, live, peak, start, stop, reset, getRms } = useMotionMeter(100);
 
-  const stopSensors = useCallback(() => {
-    subscription.current?.remove();
-    subscription.current = null;
-    gyroSub.current?.remove();
-    gyroSub.current = null;
-  }, []);
+  useEffect(() => {
+    setRecorderBusy(running);
+  }, [running, setRecorderBusy]);
 
-  const startSensors = useCallback(() => {
-    Accelerometer.setUpdateInterval(100);
-    subscription.current = Accelerometer.addListener(setAccelData);
-    Gyroscope.setUpdateInterval(100);
-    gyroSub.current = Gyroscope.addListener(setGyroData);
-  }, []);
-
+  // Stop buzzing + release the sensor if the user leaves the step mid-test.
   useEffect(() => {
     return () => {
       Vibration.cancel();
-      stopSensors();
+      stop();
       setRecorderBusy(false);
     };
-  }, [setRecorderBusy, stopSensors]);
+  }, [stop, setRecorderBusy]);
 
-  useEffect(() => {
-    setRecorderBusy(vibrating);
-  }, [setRecorderBusy, vibrating]);
-
-  function toggle() {
-    if (vibrating) {
-      Vibration.cancel();
-      stopSensors();
-      setVibrating(false);
-      return;
-    }
-    Vibration.vibrate([0, 600, 400], true);
-    startSensors();
-    setVibrating(true);
+  function selectTrial(id: TrialId) {
+    if (running) return; // don't switch designs mid-test
+    setTrial(id);
   }
 
-  const magnitude = Math.sqrt(
-    accelData.x ** 2 + accelData.y ** 2 + accelData.z ** 2,
-  );
+  function toggle() {
+    if (running) {
+      Vibration.cancel();
+      stop();
+      // Save the RMS deviation as this design's movement score (lower = steadier).
+      setMeasures((prev) => ({ ...prev, [trial]: { score: getRms() } }));
+      return;
+    }
+    reset();
+    Vibration.vibrate([0, 600, 400], true);
+    start();
+  }
+
+  const trialIndex = TRIALS.findIndex((t) => t.id === trial);
+  const currentTrial = TRIALS[trialIndex];
+  const nextTrial = TRIALS[trialIndex + 1];
+  const score = measures[trial].score;
+  const recorded = !running && score > 0 && videos[trial] !== "";
 
   return (
-    <View style={styles.stack}>
-      <View style={[styles.card, styles.mediaCard]}>
+    <>
+      <View style={styles.subTabBar}>
+        {TRIALS.map((t) => (
+          <Pressable
+            key={t.id}
+            style={[styles.subTab, trial === t.id && styles.subTabActive]}
+            onPress={() => selectTrial(t.id)}
+          >
+            <Text style={[styles.subTabLabel, trial === t.id && styles.subTabLabelActive]}>
+              {t.short}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <View style={styles.instructionBox}>
+        <Text style={styles.instructionTitle}>{currentTrial.title}</Text>
+        <Text style={styles.instructionText}>{currentTrial.instruction}</Text>
+      </View>
+
+      <View style={[styles.card, styles.timerCard]}>
         <MaterialCommunityIcons
           name="vibrate"
-          size={48}
+          size={44}
           color={c.primary}
           style={styles.mediaIcon}
         />
-        <Pressable style={[styles.primaryBtn, vibrating && styles.outlineBtn]} onPress={toggle}>
-          <Text style={[styles.primaryBtnText, vibrating && styles.outlineBtnText]}>
-            {vibrating ? "Stop Vibrating" : "Vibrate!"}
+        <Text style={styles.meterValue}>{(running ? live : score).toFixed(3)} g</Text>
+        <Text style={styles.meterCaption}>
+          {running
+            ? `Shaking… peak so far ${peak.toFixed(3)} g`
+            : score > 0
+              ? "Saved movement score (lower = steadier)"
+              : "Movement (g) — lower means steadier"}
+        </Text>
+        <Pressable style={[styles.primaryBtn, running && styles.outlineBtn]} onPress={toggle}>
+          <Text style={[styles.primaryBtnText, running && styles.outlineBtnText]}>
+            {running ? "Stop Vibration Test" : "Start Vibration Test"}
           </Text>
         </Pressable>
       </View>
 
-      <View style={styles.card}>
-        <View style={styles.accelHeader}>
-          <MaterialCommunityIcons name="axis-arrow" size={24} color={c.primary} />
-          <Text style={styles.accelTitle}>Accelerometer</Text>
-        </View>
+      <VideoEvidence
+        value={videos[trial]}
+        onChange={(uri) => setVideos((prev) => ({ ...prev, [trial]: uri }))}
+      />
 
-        <View style={styles.accelGrid}>
-          {(["X", "Y", "Z"] as const).map((axis) => (
-            <View key={axis} style={styles.accelCell}>
-              <Text style={styles.accelAxisLabel}>{axis}</Text>
-              <Text style={styles.accelValue}>
-                {accelData[axis.toLowerCase() as "x" | "y" | "z"].toFixed(3)}
-              </Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.magnitudeRow}>
-          <Text style={styles.magnitudeLabel}>Magnitude</Text>
-          <Text style={styles.magnitudeValue}>{magnitude.toFixed(3)}</Text>
-        </View>
-
-        {!vibrating && (
-          <Text style={styles.accelHint}>
-            Press Vibrate to start reading sensor data.
+      {recorded &&
+        (nextTrial ? (
+          <Text style={styles.switchHint}>
+            ✓ {currentTrial.short} tested. Switch to {nextTrial.short} above to test the next design.
           </Text>
-        )}
-      </View>
-
-      <View style={styles.card}>
-        <View style={styles.accelHeader}>
-          <MaterialCommunityIcons name="rotate-3d-variant" size={24} color={c.primary} />
-          <Text style={styles.accelTitle}>Gyroscope</Text>
-        </View>
-
-        <View style={styles.accelGrid}>
-          {(["X", "Y", "Z"] as const).map((axis) => (
-            <View key={axis} style={styles.accelCell}>
-              <Text style={styles.accelAxisLabel}>{axis}</Text>
-              <Text style={styles.accelValue}>
-                {gyroData[axis.toLowerCase() as "x" | "y" | "z"].toFixed(3)}
-              </Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.magnitudeRow}>
-          <Text style={styles.magnitudeLabel}>Rotation rate</Text>
-          <Text style={styles.magnitudeValue}>
-            {Math.sqrt(gyroData.x ** 2 + gyroData.y ** 2 + gyroData.z ** 2).toFixed(3)}
+        ) : (
+          <Text style={styles.switchHint}>
+            ✓ All designs tested. Continue to the Write-Up step when you&apos;re ready.
           </Text>
-        </View>
-
-        {!vibrating && (
-          <Text style={styles.accelHint}>
-            Press Vibrate to start reading sensor data.
-          </Text>
-        )}
-      </View>
-
-      <VideoEvidence value={video} onChange={setVideo} />
-    </View>
+        ))}
+    </>
   );
 }
 
@@ -424,21 +468,23 @@ function Recorder({
 /* Write-Up                                                                   */
 /* -------------------------------------------------------------------------- */
 
-// The 3 questions asked for every design (the mockup table's columns).
+// The 3 questions asked for every design (the mockup table's columns). The
+// movement question is auto-filled from the score measured in the Recorder.
 const WRITEUP_QUESTIONS = [
   { label: "Phone moves (yes / no)?", options: ["Yes", "No"] },
-  { label: "Outcome (in degrees)" },
+  { label: "Outcome — movement score", auto: true },
   { label: "Were you right?", options: ["Yes", "No"] },
 ];
 
 type WriteUpProps = {
+  measures: Record<TrialId, Measure>;
   answers: Record<string, string>;
   setAnswers: Dispatch<SetStateAction<Record<string, string>>>;
   reflection: string;
   setReflection: (v: string) => void;
 };
 
-function WriteUp({ answers, setAnswers, reflection, setReflection }: WriteUpProps) {
+function WriteUp({ measures, answers, setAnswers, reflection, setReflection }: WriteUpProps) {
   const { palette: c } = useTheme();
   const styles = useWizardStyles(makeStyles);
   return (
@@ -448,8 +494,13 @@ function WriteUp({ answers, setAnswers, reflection, setReflection }: WriteUpProp
           <Text style={styles.actionTitle}>{trial.title}</Text>
           {!!trial.note && <Text style={styles.actionNote}>{trial.note}</Text>}
 
-          {WRITEUP_QUESTIONS.map((q, c) => {
-            const key = `${trial.id}-${c}`;
+          {WRITEUP_QUESTIONS.map((q, qi) => {
+            const key = `${trial.id}-${qi}`;
+            const measured = measures[trial.id].score;
+            // Auto-fill the movement question from the Recorder until the user edits it.
+            const override = answers[key];
+            const showMeasured = q.auto && override === undefined && measured > 0;
+            const value = override ?? (q.auto && measured > 0 ? formatScore(measured) : "");
             return (
               <View key={key} style={styles.field}>
                 <Text style={styles.fieldLabel}>{q.label}</Text>
@@ -475,13 +526,18 @@ function WriteUp({ answers, setAnswers, reflection, setReflection }: WriteUpProp
                     })}
                   </View>
                 ) : (
-                  <TextInput
-                    style={styles.fieldInput}
-                    value={answers[key] ?? ""}
-                    onChangeText={(v) => setAnswers((prev) => ({ ...prev, [key]: v }))}
-                    multiline
-                    textAlignVertical="top"
-                  />
+                  <>
+                    <TextInput
+                      style={styles.fieldInput}
+                      value={value}
+                      onChangeText={(v) => setAnswers((prev) => ({ ...prev, [key]: v }))}
+                      multiline
+                      textAlignVertical="top"
+                    />
+                    {showMeasured && (
+                      <Text style={styles.fieldHint}>Measured in the Recorder — edit if needed.</Text>
+                    )}
+                  </>
                 )}
               </View>
             );
@@ -629,35 +685,52 @@ const makeStyles = (c: Palette, ACCENT: WizardAccent) =>
     lineHeight: 23,
   },
 
-  // Recorder (vibration card)
-  mediaCard: { alignItems: "center", paddingVertical: 40 },
-  mediaIcon: { marginBottom: 22 },
-
-  // Accelerometer
-  accelHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 },
-  accelTitle: { color: c.primary, fontSize: 18, fontWeight: "800" },
-  accelGrid: { flexDirection: "row", gap: 12 },
-  accelCell: {
-    flex: 1,
-    backgroundColor: c.bg,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  accelAxisLabel: { color: c.muted, fontSize: 13, fontWeight: "600", marginBottom: 4 },
-  accelValue: { color: c.inputText, fontSize: 17, fontWeight: "700", fontVariant: ["tabular-nums"] },
-  magnitudeRow: {
+  // Recorder (per-design vibration test)
+  mediaIcon: { marginBottom: 16 },
+  subTabBar: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 16,
-    paddingTop: 14,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#E2E2EC",
+    backgroundColor: c.white,
+    borderRadius: 999,
+    padding: 4,
+    marginBottom: 20,
+    boxShadow: "0px 1px 4px rgba(0, 0, 0, 0.06)",
   },
-  magnitudeLabel: { color: c.inputText, fontSize: 16, fontWeight: "700" },
-  magnitudeValue: { color: c.primary, fontSize: 20, fontWeight: "800", fontVariant: ["tabular-nums"] },
-  accelHint: { color: c.muted, fontSize: 14, textAlign: "center", marginTop: 14 },
+  subTab: {
+    flex: 1,
+    paddingVertical: 11,
+    paddingHorizontal: 4,
+    borderRadius: 999,
+    alignItems: "center",
+  },
+  subTabActive: { backgroundColor: ACCENT.tabActive },
+  subTabLabel: { color: c.inputText, fontSize: 13, fontWeight: "600" },
+  subTabLabelActive: { color: c.primary, fontWeight: "700" },
+  instructionBox: {
+    backgroundColor: ACCENT.softHeader,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+  },
+  instructionTitle: { color: c.primary, fontSize: 15, fontWeight: "800", marginBottom: 4 },
+  instructionText: { color: c.inputText, fontSize: 14, lineHeight: 20 },
+  timerCard: { marginBottom: 20, alignItems: "center" },
+  meterValue: {
+    color: c.inputText,
+    fontSize: 44,
+    fontWeight: "800",
+    marginBottom: 6,
+    fontVariant: ["tabular-nums"],
+  },
+  meterCaption: { color: c.muted, fontSize: 13, textAlign: "center", marginBottom: 18 },
+  switchHint: {
+    color: c.primary,
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
+    marginTop: 16,
+    lineHeight: 20,
+  },
+
   primaryBtn: {
     backgroundColor: c.primary,
     borderRadius: 12,
@@ -696,6 +769,7 @@ const makeStyles = (c: Palette, ACCENT: WizardAccent) =>
     fontSize: 16,
     lineHeight: 22,
   },
+  fieldHint: { color: c.muted, fontSize: 13, fontStyle: "italic", marginTop: 6 },
 
   // Discussion
   sectionHeading: { color: c.primary, fontSize: 23, fontWeight: "800", marginBottom: 18 },

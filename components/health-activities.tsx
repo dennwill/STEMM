@@ -3,6 +3,7 @@ import { useSQLiteContext } from "expo-sqlite";
 import { Dispatch, ReactElement, ReactNode, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  GestureResponderEvent,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,13 +14,17 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Svg, { Circle, Path } from "react-native-svg";
 
 import { VideoEvidence } from "@/components/VideoEvidence";
 import { BreathingDiagram, PerformanceDiagram, ReactionDiagram } from "@/components/ActivityDiagrams";
+import { RatingCard } from "@/components/RatingCard";
 import { createChallengeSession, createDataPoint } from "@/lib/crud";
+import { captureSessionLocation } from "@/lib/location";
 import { LOCAL_ACTIVITY_IDS, LOCAL_TEAM_ID } from "@/lib/db";
 import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
 import { Palette, useTheme } from "@/lib/theme";
+import { useMotionMeter } from "@/lib/useMotionMeter";
 
 type Accent = {
   tabActive: string;
@@ -127,6 +132,7 @@ function ActivityShell<TrialId extends string, Measurement>({
   const [step, setStep] = useState(0);
   const [prediction, setPrediction] = useState<PredictionValue>({ choice: "", reason: "" });
   const [reflection, setReflection] = useState("");
+  const [rating, setRating] = useState(0);
   const [measurements, setMeasurements] = useState<Record<TrialId, Measurement>>(
     createInitialMeasurements,
   );
@@ -153,6 +159,7 @@ function ActivityShell<TrialId extends string, Measurement>({
       // Persist the activity session and per-trial data points to SQLite.
       let localSaveMessage = "Activity data was saved locally.";
       try {
+        const loc = await captureSessionLocation();
         const sessionId = await createChallengeSession(db, {
           team_id: LOCAL_TEAM_ID,
           activity_id: LOCAL_ACTIVITY_IDS[activityId],
@@ -160,6 +167,9 @@ function ActivityShell<TrialId extends string, Measurement>({
             ? `${prediction.choice}: ${prediction.reason}`
             : null,
           discussion_reflection: reflection || null,
+          rating: rating || null,
+          gps_lat: loc?.lat ?? null,
+          gps_lng: loc?.lng ?? null,
         });
 
         for (let i = 0; i < trials.length; i++) {
@@ -172,7 +182,7 @@ function ActivityShell<TrialId extends string, Measurement>({
             prediction_value: prediction.choice === trial.short ? "predicted" : null,
             outcome_value: outcome,
             prediction_correct: prediction.choice === trial.short && outcome ? true : null,
-            media_file_path: null,
+            media_file_path: videos[trial.id] || null,
           });
         }
       } catch (err) {
@@ -254,6 +264,7 @@ function ActivityShell<TrialId extends string, Measurement>({
               setReflection,
             })}
           {current === "Discussion" && renderDiscussion()}
+          {current === "Discussion" && <RatingCard value={rating} onChange={setRating} />}
         </ScrollView>
 
         <View style={styles.footer}>
@@ -524,36 +535,32 @@ function DiscussionContent({
 
 const PERFORMANCE_TRIALS = [
   {
-    id: "resting",
-    short: "Resting",
-    title: "Resting pulse",
-    note: "Sit still for one minute before measuring.",
-    instruction: "Sit quietly, find your pulse, then time a 15-second count.",
+    id: "circle",
+    short: "Circle",
+    title: "Movement 1 — hand circle",
+    note: "Rotate your hand in a smooth circle.",
+    instruction:
+      "Hold the phone firmly. Start the meter, then move your hand in a slow, smooth circle for the full window.",
   },
   {
-    id: "jumping",
-    short: "Jumping",
-    title: "After 30 seconds of jumping jacks",
-    note: "Exercise safely in an open space.",
-    instruction: "Do jumping jacks for 30 seconds, then immediately time a 15-second pulse count.",
+    id: "figure8",
+    short: "Figure-8",
+    title: "Movement 2 — figure-8",
+    note: "Trace a figure-8 in the air.",
+    instruction: "Start the meter, then trace a smooth figure-8 with the phone for the full window.",
   },
   {
-    id: "recovery1",
-    short: "1 min",
-    title: "One-minute recovery",
-    note: "Wait one minute after exercise.",
-    instruction: "Rest for one minute, then time another 15-second pulse count.",
-  },
-  {
-    id: "recovery2",
-    short: "2 min",
-    title: "Two-minute recovery",
-    note: "Wait two minutes after exercise.",
-    instruction: "Rest for another minute, then time a final 15-second pulse count.",
+    id: "sideToSide",
+    short: "Side-to-side",
+    title: "Movement 3 — slow side-to-side",
+    note: "Sweep the phone left and right.",
+    instruction:
+      "Start the meter, then sweep the phone slowly side to side, keeping the motion as smooth as you can.",
   },
 ] as const;
 type PerformanceTrialId = (typeof PERFORMANCE_TRIALS)[number]["id"];
-type PerformanceMeasurement = { elapsed: number; beats: number };
+type PerformanceMeasurement = { elapsed: number; score: number };
+const GRACE_WINDOW_MS = 15000;
 
 export function HumanPerformanceLabScreen() {
   return (
@@ -562,48 +569,47 @@ export function HumanPerformanceLabScreen() {
       title="Human Performance Lab"
       formatMeasurement={formatPerformanceMeasurement}
       trials={PERFORMANCE_TRIALS}
-      predictionPrompt="Predict when your pulse rate will be highest."
-      predictionLead="I predict my pulse will be highest during"
+      predictionPrompt="Predict which movement will be hardest to keep smooth."
+      predictionLead="I predict the hardest movement to keep smooth will be"
       predictionTail="because..."
       predictionOptions={PERFORMANCE_TRIALS.map((t) => t.short)}
       canContinueFromRecorder={(measurements) =>
-        PERFORMANCE_TRIALS.every((t) => measurements[t.id].elapsed >= 15000 && measurements[t.id].beats > 0)
+        PERFORMANCE_TRIALS.every(
+          (t) => measurements[t.id].elapsed >= GRACE_WINDOW_MS && measurements[t.id].score > 0,
+        )
       }
-      recorderIncompleteMessage="Record a full 15-second pulse count and at least one beat for every trial before continuing."
+      recorderIncompleteMessage="Run the full 15-second smoothness window for every movement before continuing."
       createInitialMeasurements={() =>
-        Object.fromEntries(PERFORMANCE_TRIALS.map((t) => [t.id, { elapsed: 0, beats: 0 }])) as Record<
+        Object.fromEntries(PERFORMANCE_TRIALS.map((t) => [t.id, { elapsed: 0, score: 0 }])) as Record<
           PerformanceTrialId,
           PerformanceMeasurement
         >
       }
       renderInstructions={() => (
         <InstructionsContent
-          overview="Students measure pulse before exercise, immediately after exercise, and during recovery. The aim is to see how the body responds to activity and how quickly it returns toward baseline."
+          overview="Students investigate how smoothly and gracefully the body moves. Holding the phone, they perform guided hand movements while the motion sensor measures how steady (low vibration) each movement is."
           equipment={[
             "Mobile phone with STEMM Lab app",
-            "Chair or safe standing space",
-            "Clear space for light exercise",
-            "Notebook or worksheet for pulse counts",
+            "Open space to move safely",
           ]}
           instructions={[
-            "Sit still and find your pulse at your wrist or neck.",
-            "Use the timer to count pulse beats for 15 seconds while resting.",
-            "Complete 30 seconds of safe light exercise such as jumping jacks.",
-            "Measure pulse again immediately after exercise.",
-            "Rest and repeat the 15-second pulse count after one minute and two minutes.",
-            "Calculate pulse rate in beats per minute and compare the results.",
+            "Hold the phone firmly in one hand.",
+            "Start the motion meter for the movement.",
+            "Perform the guided movement slowly and smoothly for 15 seconds.",
+            "Read the smoothness score — lower means steadier and more graceful.",
+            "Repeat for each movement and compare which was hardest to keep smooth.",
           ]}
-          referenceHeaders={["Measurement", "What it shows"]}
+          referenceHeaders={["Idea", "What it shows"]}
           referenceRows={[
-            ["Resting pulse", "Heart supplies oxygen for normal activity"],
-            ["Exercise pulse", "Muscles need more oxygen and glucose"],
-            ["Recovery pulse", "Heart rate gradually returns toward resting"],
-            ["Faster recovery", "Often suggests better cardiovascular efficiency"],
+            ["Smoothness score", "How much the phone vibrated (lower = smoother)"],
+            ["Faster movement", "Often harder to control, so vibration rises"],
+            ["Coordination", "Smoother movement shows better muscle control"],
+            ["Fatigue", "Tired muscles make movement shakier"],
           ]}
           diagram={[
-            "Phone timer starts the 15-second pulse-count window.",
-            "Student counts pulse beats during each trial.",
-            "Pulse should rise after exercise and move back toward resting during recovery.",
+            "Hold the phone and rotate your hand in a circle.",
+            "Trace a figure-8 in the air.",
+            "The motion sensor scores how smooth each movement is.",
           ]}
           diagramArt={<PerformanceDiagram />}
         />
@@ -613,22 +619,22 @@ export function HumanPerformanceLabScreen() {
         <StandardWriteUp
           {...props}
           questions={[
-            { label: "Predicted pulse level before measuring" },
-            { label: "Measured pulse result", auto: true },
+            { label: "Predicted smoothness before measuring" },
+            { label: "Measured smoothness score", auto: true },
             { label: "How did this compare with your prediction?" },
             { label: "What might have affected this result?" },
             { label: "Were you right?" },
           ]}
-          reflectionPrompt="How did your pulse change after exercise and during recovery? What does that suggest about fitness, oxygen demand, and recovery?"
+          reflectionPrompt="Which movement was hardest to keep smooth, and why? What does that suggest about coordination, control, and fatigue?"
           formatMeasurement={formatPerformanceMeasurement}
         />
       )}
       renderDiscussion={() => (
         <DiscussionContent
           heading="So why does this happen?"
-          formulaTitle="Pulse rate:"
-          formula="Pulse rate (bpm) = beats counted in 15 seconds x 4"
-          explanation="Exercise increases muscle oxygen demand, so breathing and heart rate rise. During recovery, demand drops and the cardiovascular system returns toward baseline. Comparing resting, exercise, and recovery pulse shows how the body responds to workload."
+          formulaTitle="Smoothness score:"
+          formula="Smoothness = average vibration while moving (lower = smoother)"
+          explanation="Muscles and joints work together to create movement. Faster or less-controlled movements wobble more, so the phone's motion sensor reads higher vibration. Smoother movements show better coordination, and tired muscles make movement shakier — which is why athletes and dancers practise control."
         />
       )}
     />
@@ -645,11 +651,11 @@ function PerformanceRecorder({
 }: MeasurementProps<PerformanceTrialId, PerformanceMeasurement>) {
   const styles = useActivityStyles();
   const [trial, setTrial] = useState<PerformanceTrialId>(trials[0].id);
-  const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(measurements[trials[0].id].elapsed);
+  const { running, live, peak, start, stop, reset, getRms } = useMotionMeter(100);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startRef = useRef(0);
-  const maxMs = 15000;
+  const maxMs = GRACE_WINDOW_MS;
 
   useEffect(() => {
     return () => {
@@ -668,61 +674,45 @@ function PerformanceRecorder({
     setElapsed(measurements[id].elapsed);
   }
 
-  function save(nextElapsed: number, beats?: number) {
-    setMeasurements((prev) => ({
-      ...prev,
-      [trial]: { elapsed: nextElapsed, beats: beats ?? prev[trial].beats },
-    }));
+  function finish(finalElapsed: number) {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = null;
+    stop();
+    setElapsed(finalElapsed);
+    // Lower RMS deviation = smoother, more graceful movement.
+    setMeasurements((prev) => ({ ...prev, [trial]: { elapsed: finalElapsed, score: getRms() } }));
   }
 
-  function toggleTimer() {
+  function toggleMeter() {
     if (running) {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      intervalRef.current = null;
-      const finalElapsed = Math.min(Date.now() - startRef.current, maxMs);
-      setElapsed(finalElapsed);
-      save(finalElapsed);
-      setRunning(false);
+      finish(Math.min(Date.now() - startRef.current, maxMs));
       return;
     }
-
-    const base = elapsed >= maxMs ? 0 : elapsed;
-    startRef.current = Date.now() - base;
-    setElapsed(base);
+    reset();
+    setElapsed(0);
+    startRef.current = Date.now();
+    start();
     intervalRef.current = setInterval(() => {
       const next = Math.min(Date.now() - startRef.current, maxMs);
       setElapsed(next);
-      if (next >= maxMs) {
-        if (intervalRef.current) clearInterval(intervalRef.current);
-        intervalRef.current = null;
-        save(maxMs);
-        setRunning(false);
-      }
-    }, 30);
-    setRunning(true);
+      if (next >= maxMs) finish(maxMs);
+    }, 50);
   }
 
-  function clearCount() {
+  function clearMeter() {
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = null;
-    setRunning(false);
+    stop();
+    reset();
     setElapsed(0);
-    setMeasurements((prev) => ({ ...prev, [trial]: { elapsed: 0, beats: 0 } }));
-  }
-
-  function changeBeats(delta: number) {
-    setMeasurements((prev) => {
-      const current = prev[trial];
-      const beats = Math.max(0, current.beats + delta);
-      return { ...prev, [trial]: { ...current, beats } };
-    });
+    setMeasurements((prev) => ({ ...prev, [trial]: { elapsed: 0, score: 0 } }));
   }
 
   const trialIndex = trials.findIndex((t) => t.id === trial);
   const currentTrial = trials[trialIndex];
   const nextTrial = trials[trialIndex + 1];
   const current = measurements[trial];
-  const recorded = !running && current.elapsed >= maxMs && current.beats > 0;
+  const recorded = !running && current.elapsed >= maxMs && current.score > 0;
 
   return (
     <>
@@ -740,37 +730,25 @@ function PerformanceRecorder({
 
       <View style={[styles.card, styles.timerCard]}>
         <Text style={styles.timer}>{formatTime(elapsed)}</Text>
-        <Text style={styles.resultLine}>Count pulse beats for exactly 15 seconds.</Text>
-
-        <View style={styles.counterRow}>
-          <Pressable style={styles.counterBtn} onPress={() => changeBeats(-1)}>
-            <Text style={styles.counterBtnText}>-</Text>
-          </Pressable>
-          <View style={styles.counterReadout}>
-            <Text style={styles.counterNumber}>{current.beats}</Text>
-            <Text style={styles.counterLabel}>beats</Text>
-          </View>
-          <Pressable style={styles.counterBtn} onPress={() => changeBeats(1)}>
-            <Text style={styles.counterBtnText}>+</Text>
-          </Pressable>
-        </View>
-
         <Text style={styles.resultLine}>
-          {current.beats > 0 && elapsed >= maxMs
-            ? `Pulse rate: ${current.beats * 4} bpm`
-            : "Pulse rate appears after a full 15-second count."}
+          {running
+            ? `Now: ${live.toFixed(3)} g · peak ${peak.toFixed(3)} g`
+            : "Keep the movement slow and smooth for 15 seconds."}
         </Text>
 
-        <Pressable
-          style={[styles.outlineBtn, running && styles.primaryBtn]}
-          onPress={toggleTimer}
-        >
+        <Text style={styles.resultLine}>
+          {current.score > 0 && current.elapsed >= maxMs
+            ? `Smoothness score: ${current.score.toFixed(3)} (lower = smoother)`
+            : "Smoothness score appears after a full 15-second window."}
+        </Text>
+
+        <Pressable style={[styles.outlineBtn, running && styles.primaryBtn]} onPress={toggleMeter}>
           <Text style={[styles.outlineBtnText, running && styles.primaryBtnText]}>
-            {running ? "Stop Count" : elapsed >= maxMs ? "Restart 15s Count" : "Start 15s Count"}
+            {running ? "Stop" : current.elapsed >= maxMs ? "Redo Movement" : "Start Movement"}
           </Text>
         </Pressable>
-        <Pressable style={styles.outlineBtn} onPress={clearCount}>
-          <Text style={styles.outlineBtnText}>Clear Count</Text>
+        <Pressable style={styles.outlineBtn} onPress={clearMeter}>
+          <Text style={styles.outlineBtnText}>Clear</Text>
         </Pressable>
       </View>
 
@@ -778,11 +756,11 @@ function PerformanceRecorder({
         (nextTrial ? (
           <Text style={styles.switchHint}>
             Saved {currentTrial.short}. Switch to {nextTrial.short} above to record the next
-            pulse count.
+            movement.
           </Text>
         ) : (
           <Text style={styles.switchHint}>
-            All pulse results recorded. Continue to the Write-Up step when you are ready.
+            All movements recorded. Continue to the Write-Up step when you are ready.
           </Text>
         ))}
     </>
@@ -790,10 +768,10 @@ function PerformanceRecorder({
 }
 
 function formatPerformanceMeasurement(measurement: PerformanceMeasurement) {
-  if (measurement.elapsed < 15000 || measurement.beats <= 0) return "";
-  return `${measurement.beats} beats in ${formatTime(measurement.elapsed)} = ${
-    measurement.beats * 4
-  } bpm`;
+  if (measurement.elapsed < GRACE_WINDOW_MS || measurement.score <= 0) return "";
+  return `score ${measurement.score.toFixed(3)} (lower = smoother), ${formatTime(
+    measurement.elapsed,
+  )}`;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -804,34 +782,33 @@ const REACTION_TRIALS = [
   {
     id: "dominant",
     short: "Dominant",
-    title: "Dominant hand",
+    title: "Phase 1 — dominant hand",
     note: "Use the hand you write with.",
-    instruction: "Keep your finger ready, wait for the target to change, then tap as fast as you can.",
+    instruction:
+      "Keep your finger ready, wait for the target square to appear, then tap it as fast as you can. Five rounds.",
   },
   {
     id: "nonDominant",
-    short: "Other",
-    title: "Non-dominant hand",
+    short: "Other hand",
+    title: "Phase 2 — non-dominant hand",
     note: "Use your other hand.",
-    instruction: "Repeat the same test using your non-dominant hand.",
+    instruction: "Repeat the five-round tap test using your non-dominant hand, then compare.",
   },
   {
-    id: "distraction",
-    short: "Counting",
-    title: "Counting backwards",
-    note: "Count backwards by threes while waiting.",
-    instruction: "Start counting backwards, then tap when the target says Tap.",
-  },
-  {
-    id: "exercise",
-    short: "Activity",
-    title: "After light activity",
-    note: "Complete 20 seconds of safe movement first.",
-    instruction: "Do light activity, return to the phone, then complete the reaction rounds.",
+    id: "tracing",
+    short: "Tracing",
+    title: "Phase 3 — tracing challenge",
+    note: "Follow the moving dot with your finger.",
+    instruction:
+      "Press Start, then keep your fingertip on the moving dot as it traces a figure-8. The app scores how closely you follow it.",
   },
 ] as const;
 type ReactionTrialId = (typeof REACTION_TRIALS)[number]["id"];
-type ReactionMeasurement = { rounds: number[] };
+// Phases 1–2 record tap reaction times; Phase 3 records a tracing accuracy, so a
+// trial's measurement is one of two shapes.
+type TapMeasurement = { kind: "tap"; rounds: number[] };
+type TraceMeasurement = { kind: "trace"; accuracyPct: number; done: boolean };
+type ReactionMeasurement = TapMeasurement | TraceMeasurement;
 
 export function ReactionBoardChallengeScreen() {
   return (
@@ -840,46 +817,53 @@ export function ReactionBoardChallengeScreen() {
       formatMeasurement={formatReactionMeasurement}
       title="Reaction Board Challenge"
       trials={REACTION_TRIALS}
-      predictionPrompt="Predict which condition will have the fastest reaction time."
-      predictionLead="I predict that"
-      predictionTail="will be fastest because..."
+      predictionPrompt="Predict which phase you will perform best in."
+      predictionLead="I predict I will do best in"
+      predictionTail="because..."
       predictionOptions={REACTION_TRIALS.map((t) => t.short)}
       canContinueFromRecorder={(measurements) =>
-        REACTION_TRIALS.every((t) => measurements[t.id].rounds.length === 5)
+        REACTION_TRIALS.every((t) => {
+          const m = measurements[t.id];
+          return m.kind === "tap" ? m.rounds.length === 5 : m.done;
+        })
       }
-      recorderIncompleteMessage="Complete five reaction rounds for every trial before continuing."
+      recorderIncompleteMessage="Finish five tap rounds for each hand and complete the tracing challenge before continuing."
       createInitialMeasurements={() =>
-        Object.fromEntries(REACTION_TRIALS.map((t) => [t.id, { rounds: [] }])) as unknown as Record<
-          ReactionTrialId,
-          ReactionMeasurement
-        >
+        Object.fromEntries(
+          REACTION_TRIALS.map((t) => [
+            t.id,
+            t.id === "tracing"
+              ? { kind: "trace", accuracyPct: 0, done: false }
+              : { kind: "tap", rounds: [] },
+          ]),
+        ) as Record<ReactionTrialId, ReactionMeasurement>
       }
       renderInstructions={() => (
         <InstructionsContent
-          overview="Students test how attention, hand choice, and activity can change reaction time. Each trial records several tap responses and compares the average result."
+          overview="Students test how the brain and body respond. Phases 1 and 2 measure tap reaction time with each hand; Phase 3 is a tracing challenge that scores how accurately you follow a moving target."
           equipment={[
             "Mobile phone with STEMM Lab app",
             "Flat table or stable surface",
-            "Clear space for light activity",
+            "Clear working space",
           ]}
           instructions={[
-            "Choose the first reaction condition.",
-            "Press Start Round and wait without tapping early.",
-            "Tap the target as soon as it changes to Tap.",
-            "Complete five rounds for each condition.",
-            "Compare the average reaction time across all trials.",
+            "Phase 1: tap the target as soon as it appears, using your dominant hand (five rounds).",
+            "Phase 2: repeat the tap test with your non-dominant hand and compare.",
+            "Phase 3: keep your finger on the moving dot as it traces a shape.",
+            "Review the accuracy and delay for each phase.",
+            "Rotate through each team member.",
           ]}
-          referenceHeaders={["Factor", "Effect on reaction time"]}
+          referenceHeaders={["Factor", "Effect on performance"]}
           referenceRows={[
-            ["Sensory input", "Eyes detect the target change"],
+            ["Sensory input", "Eyes detect the target appearing or moving"],
             ["Nervous system", "Brain processes the signal and chooses a response"],
-            ["Motor response", "Muscles move the finger to tap"],
-            ["Distraction or fatigue", "Divides attention or slows processing"],
+            ["Motor response", "Muscles move the finger to tap or trace"],
+            ["Hand dominance", "The practised hand is usually faster and steadier"],
           ]}
           diagram={[
-            "Wait state appears first.",
-            "Target changes to Tap after a random delay.",
-            "App records the time between cue and tap.",
+            "Tap phases: a target square appears after a random delay.",
+            "Tracing phase: a dot moves along a path to follow.",
+            "App records reaction time and tracing accuracy.",
           ]}
           diagramArt={<ReactionDiagram />}
         />
@@ -889,12 +873,12 @@ export function ReactionBoardChallengeScreen() {
         <StandardWriteUp
           {...props}
           questions={[
-            { label: "Prediction for this condition" },
-            { label: "Average reaction time", auto: true },
-            { label: "Was this faster or slower than expected?" },
+            { label: "Prediction for this phase" },
+            { label: "Your result", auto: true },
+            { label: "Was this better or worse than expected?" },
             { label: "What might have affected your result?" },
           ]}
-          reflectionPrompt="Which condition gave the fastest reaction time? What pattern did you notice across the four tests?"
+          reflectionPrompt="How did your dominant and non-dominant hands compare, and how accurately could you trace the moving target?"
           formatMeasurement={formatReactionMeasurement}
         />
       )}
@@ -903,13 +887,15 @@ export function ReactionBoardChallengeScreen() {
           heading="So why does this happen?"
           formulaTitle="Reaction time:"
           formula="Reaction time = response tap time - visual cue time"
-          explanation="Reaction time measures the delay between seeing a stimulus and producing a movement. Faster times usually mean attention, signal processing, and motor response were more efficient. Distraction and tiredness can slow the pathway; light activity may improve alertness for some students but fatigue can make it worse."
+          explanation="Reaction time measures the delay between seeing a stimulus and producing a movement, while tracing tests how well the brain coordinates continuous movement. Faster, more accurate responses mean the sense–brain–muscle pathway is working efficiently. The dominant hand is usually quicker and steadier because it is more practised."
         />
       )}
     />
   );
 }
 
+// Dispatches to the tap board (Phases 1–2) or the tracing canvas (Phase 3)
+// based on the current trial's measurement kind, and owns the trial tabs.
 function ReactionRecorder({
   trials,
   measurements,
@@ -920,12 +906,78 @@ function ReactionRecorder({
 }: MeasurementProps<ReactionTrialId, ReactionMeasurement>) {
   const styles = useActivityStyles();
   const [trial, setTrial] = useState<ReactionTrialId>(trials[0].id);
+
+  const trialIndex = trials.findIndex((t) => t.id === trial);
+  const currentTrial = trials[trialIndex];
+  const nextTrial = trials[trialIndex + 1];
+  const current = measurements[trial];
+  const complete = current.kind === "tap" ? current.rounds.length >= 5 : current.done;
+
+  return (
+    <>
+      <TrialTabs trials={trials} active={trial} onSelect={setTrial} />
+
+      <View style={styles.instructionBox}>
+        <Text style={styles.instructionTitle}>{currentTrial.title}</Text>
+        <Text style={styles.instructionText}>{currentTrial.instruction}</Text>
+      </View>
+
+      <VideoEvidence
+        value={videos[trial]}
+        onChange={(uri) => setVideos((p) => ({ ...p, [trial]: uri }))}
+      />
+
+      {current.kind === "trace" ? (
+        <TraceRecorder
+          trial={trial}
+          measurement={current}
+          setMeasurements={setMeasurements}
+          setRecorderBusy={setRecorderBusy}
+        />
+      ) : (
+        <TapRecorder
+          trial={trial}
+          measurement={current}
+          setMeasurements={setMeasurements}
+          setRecorderBusy={setRecorderBusy}
+        />
+      )}
+
+      {complete &&
+        (nextTrial ? (
+          <Text style={styles.switchHint}>
+            Saved {currentTrial.short}. Switch to {nextTrial.short} above.
+          </Text>
+        ) : (
+          <Text style={styles.switchHint}>
+            All reaction phases recorded. Continue to the Write-Up step when you are ready.
+          </Text>
+        ))}
+    </>
+  );
+}
+
+type SubRecorderProps<M extends ReactionMeasurement> = {
+  trial: ReactionTrialId;
+  measurement: M;
+  setMeasurements: Dispatch<SetStateAction<Record<ReactionTrialId, ReactionMeasurement>>>;
+  setRecorderBusy: Dispatch<SetStateAction<boolean>>;
+};
+
+function TapRecorder({
+  trial,
+  measurement,
+  setMeasurements,
+  setRecorderBusy,
+}: SubRecorderProps<TapMeasurement>) {
+  const styles = useActivityStyles();
   const [status, setStatus] = useState<"idle" | "waiting" | "ready">("idle");
   const [message, setMessage] = useState("Press Start Round when you are ready.");
   const [activeCell, setActiveCell] = useState<number | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cueRef = useRef(0);
   const acceptingTapRef = useRef(false);
+  const rounds = measurement.rounds;
 
   useEffect(() => {
     return () => {
@@ -938,17 +990,10 @@ function ReactionRecorder({
     return () => setRecorderBusy(false);
   }, [setRecorderBusy, status]);
 
-  function selectTrial(id: ReactionTrialId) {
-    if (status !== "idle") return;
-    setTrial(id);
-    setActiveCell(null);
-    setMessage("Press Start Round when you are ready.");
-  }
-
   function startRound() {
     if (status !== "idle") return;
-    if (measurements[trial].rounds.length >= 5) {
-      setMessage("This trial already has five rounds. Switch to the next trial.");
+    if (rounds.length >= 5) {
+      setMessage("This phase already has five rounds. Switch to the next phase.");
       return;
     }
     const delay = 1200 + Math.floor(Math.random() * 2300);
@@ -988,8 +1033,10 @@ function ReactionRecorder({
 
     const reactionMs = Math.round(now() - cueRef.current);
     setMeasurements((prev) => {
-      const nextRounds = [...prev[trial].rounds, reactionMs].slice(0, 5);
-      return { ...prev, [trial]: { rounds: nextRounds } };
+      const prevTrial = prev[trial];
+      const prevRounds = prevTrial.kind === "tap" ? prevTrial.rounds : [];
+      const nextRounds = [...prevRounds, reactionMs].slice(0, 5);
+      return { ...prev, [trial]: { kind: "tap", rounds: nextRounds } };
     });
     setActiveCell(null);
     setStatus("idle");
@@ -1003,91 +1050,204 @@ function ReactionRecorder({
     setActiveCell(null);
     setStatus("idle");
     setMessage("Rounds cleared. Press Start Round when you are ready.");
-    setMeasurements((prev) => ({ ...prev, [trial]: { rounds: [] } }));
+    setMeasurements((prev) => ({ ...prev, [trial]: { kind: "tap", rounds: [] } }));
   }
 
-  const trialIndex = trials.findIndex((t) => t.id === trial);
-  const currentTrial = trials[trialIndex];
-  const nextTrial = trials[trialIndex + 1];
-  const rounds = measurements[trial].rounds;
   const average = averageReaction(rounds);
-  const complete = rounds.length >= 5;
 
   return (
-    <>
-      <TrialTabs trials={trials} active={trial} onSelect={selectTrial} />
-
-      <View style={styles.instructionBox}>
-        <Text style={styles.instructionTitle}>{currentTrial.title}</Text>
-        <Text style={styles.instructionText}>{currentTrial.instruction}</Text>
+    <View style={[styles.card, styles.timerCard]}>
+      <Text style={styles.reactionMeta}>Round {Math.min(rounds.length + 1, 5)} of 5</Text>
+      <View style={styles.reactionBoard}>
+        {Array.from({ length: 9 }).map((_, cell) => {
+          const isTarget = status === "ready" && activeCell === cell;
+          return (
+            <Pressable
+              key={cell}
+              style={[
+                styles.reactionCell,
+                status === "waiting" && styles.reactionWaiting,
+                isTarget && styles.reactionReady,
+              ]}
+              onPress={() => tapTarget(cell)}
+            >
+              <Text style={[styles.reactionCellText, isTarget && styles.reactionCellTextReady]}>
+                {isTarget ? "Tap" : ""}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
-
-      <VideoEvidence
-        value={videos[trial]}
-        onChange={(uri) => setVideos((p) => ({ ...p, [trial]: uri }))}
-      />
-
-      <View style={[styles.card, styles.timerCard]}>
-        <Text style={styles.reactionMeta}>Round {Math.min(rounds.length + 1, 5)} of 5</Text>
-        <View style={styles.reactionBoard}>
-          {Array.from({ length: 9 }).map((_, cell) => {
-            const isTarget = status === "ready" && activeCell === cell;
-            return (
-              <Pressable
-                key={cell}
-                style={[
-                  styles.reactionCell,
-                  status === "waiting" && styles.reactionWaiting,
-                  isTarget && styles.reactionReady,
-                ]}
-                onPress={() => tapTarget(cell)}
-              >
-                <Text style={[styles.reactionCellText, isTarget && styles.reactionCellTextReady]}>
-                  {isTarget ? "Tap" : ""}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        <Text style={styles.instructionText}>{message}</Text>
-        <Text style={styles.resultLine}>
-          {rounds.length > 0
-            ? `Average: ${average} ms (${rounds.length}/5 rounds)`
-            : "No rounds recorded yet."}
-        </Text>
-        <Pressable
+      <Text style={styles.instructionText}>{message}</Text>
+      <Text style={styles.resultLine}>
+        {rounds.length > 0
+          ? `Average: ${average} ms (${rounds.length}/5 rounds)`
+          : "No rounds recorded yet."}
+      </Text>
+      <Pressable
+        style={[
+          styles.outlineBtn,
+          status === "idle" && rounds.length < 5 && styles.primaryBtn,
+          rounds.length >= 5 && styles.disabledBtn,
+        ]}
+        onPress={startRound}
+      >
+        <Text
           style={[
-            styles.outlineBtn,
-            status === "idle" && rounds.length < 5 && styles.primaryBtn,
-            rounds.length >= 5 && styles.disabledBtn,
+            styles.outlineBtnText,
+            status === "idle" && rounds.length < 5 && styles.primaryBtnText,
           ]}
-          onPress={startRound}
         >
-          <Text
-            style={[
-              styles.outlineBtnText,
-              status === "idle" && rounds.length < 5 && styles.primaryBtnText,
-            ]}
-          >
-            {rounds.length >= 5 ? "Trial Complete" : "Start Round"}
-          </Text>
-        </Pressable>
-        <Pressable style={styles.outlineBtn} onPress={clearRounds}>
-          <Text style={styles.outlineBtnText}>Clear Rounds</Text>
-        </Pressable>
+          {rounds.length >= 5 ? "Phase Complete" : "Start Round"}
+        </Text>
+      </Pressable>
+      <Pressable style={styles.outlineBtn} onPress={clearRounds}>
+        <Text style={styles.outlineBtnText}>Clear Rounds</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const TRACE_SIZE = 240;
+const TRACE_DURATION_MS = 9000;
+
+// A Gerono lemniscate (figure-8) centred in the board, parameterised 0..1.
+function tracePoint(progress: number) {
+  const centre = TRACE_SIZE / 2;
+  const amp = TRACE_SIZE * 0.36;
+  const t = progress * Math.PI * 2;
+  return { x: centre + amp * Math.sin(t), y: centre + amp * Math.sin(t) * Math.cos(t) };
+}
+
+// Pre-built faint guide path the target dot travels along.
+const TRACE_PATH = (() => {
+  const steps = 80;
+  let d = "";
+  for (let i = 0; i <= steps; i++) {
+    const p = tracePoint(i / steps);
+    d += `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)} `;
+  }
+  return d.trim();
+})();
+
+// Mean tracking error (px) at which accuracy hits 0%.
+const TRACE_ERROR_FLOOR = TRACE_SIZE * 0.4;
+
+function TraceRecorder({
+  trial,
+  measurement,
+  setMeasurements,
+  setRecorderBusy,
+}: SubRecorderProps<TraceMeasurement>) {
+  const { palette: c } = useTheme();
+  const styles = useActivityStyles();
+  const [running, setRunning] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [finger, setFinger] = useState<{ x: number; y: number } | null>(null);
+  const fingerRef = useRef<{ x: number; y: number } | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startRef = useRef(0);
+  const errSumRef = useRef(0);
+  const errCountRef = useRef(0);
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    setRecorderBusy(running);
+    return () => setRecorderBusy(false);
+  }, [running, setRecorderBusy]);
+
+  function finishTrace() {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = null;
+    setRunning(false);
+    const meanErr = errCountRef.current > 0 ? errSumRef.current / errCountRef.current : TRACE_ERROR_FLOOR;
+    const accuracyPct = Math.max(0, Math.round(100 - (meanErr / TRACE_ERROR_FLOOR) * 100));
+    setMeasurements((prev) => ({ ...prev, [trial]: { kind: "trace", accuracyPct, done: true } }));
+  }
+
+  function startTrace() {
+    if (running) return;
+    errSumRef.current = 0;
+    errCountRef.current = 0;
+    fingerRef.current = null;
+    setFinger(null);
+    setProgress(0);
+    startRef.current = Date.now();
+    setRunning(true);
+    intervalRef.current = setInterval(() => {
+      const t = Math.min((Date.now() - startRef.current) / TRACE_DURATION_MS, 1);
+      setProgress(t);
+      const target = tracePoint(t);
+      const f = fingerRef.current;
+      // A finger that is off the screen counts as a full-error sample, so you
+      // have to actually follow the dot to score well.
+      const dist = f ? Math.hypot(f.x - target.x, f.y - target.y) : TRACE_ERROR_FLOOR;
+      errSumRef.current += dist;
+      errCountRef.current += 1;
+      if (t >= 1) finishTrace();
+    }, 50);
+  }
+
+  function clearTrace() {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = null;
+    setRunning(false);
+    setProgress(0);
+    fingerRef.current = null;
+    setFinger(null);
+    errSumRef.current = 0;
+    errCountRef.current = 0;
+    setMeasurements((prev) => ({ ...prev, [trial]: { kind: "trace", accuracyPct: 0, done: false } }));
+  }
+
+  function onTouch(e: GestureResponderEvent) {
+    const point = { x: e.nativeEvent.locationX, y: e.nativeEvent.locationY };
+    fingerRef.current = point;
+    setFinger(point);
+  }
+
+  const target = tracePoint(progress);
+
+  return (
+    <View style={[styles.card, styles.timerCard]}>
+      <View
+        style={styles.traceBoard}
+        onStartShouldSetResponder={() => running}
+        onMoveShouldSetResponder={() => running}
+        onResponderGrant={onTouch}
+        onResponderMove={onTouch}
+      >
+        <Svg width={TRACE_SIZE} height={TRACE_SIZE}>
+          <Path d={TRACE_PATH} stroke={c.muted} strokeWidth={2} strokeDasharray="6 6" fill="none" />
+          {finger && (
+            <Circle cx={finger.x} cy={finger.y} r={11} stroke={c.primary} strokeWidth={2} fill="none" />
+          )}
+          <Circle cx={target.x} cy={target.y} r={13} fill={c.primary} />
+        </Svg>
       </View>
 
-      {complete &&
-        (nextTrial ? (
-          <Text style={styles.switchHint}>
-            Average saved for {currentTrial.short}. Switch to {nextTrial.short} above.
-          </Text>
-        ) : (
-          <Text style={styles.switchHint}>
-            All reaction trials recorded. Continue to the Write-Up step when you are ready.
-          </Text>
-        ))}
-    </>
+      <Text style={styles.resultLine}>
+        {running
+          ? `Following the dot… ${Math.round(progress * 100)}%`
+          : measurement.done
+            ? `Accuracy: ${measurement.accuracyPct}%`
+            : "Press Start, then keep your finger on the moving dot."}
+      </Text>
+
+      <Pressable style={[styles.outlineBtn, running && styles.primaryBtn]} onPress={startTrace}>
+        <Text style={[styles.outlineBtnText, running && styles.primaryBtnText]}>
+          {running ? "Tracing…" : measurement.done ? "Redo Trace" : "Start Trace"}
+        </Text>
+      </Pressable>
+      <Pressable style={styles.outlineBtn} onPress={clearTrace}>
+        <Text style={styles.outlineBtnText}>Clear</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -1101,72 +1261,47 @@ function now() {
 }
 
 function formatReactionMeasurement(measurement: ReactionMeasurement) {
-  const average = averageReaction(measurement.rounds);
-  return average > 0 ? `${average} ms` : "";
+  if (measurement.kind === "tap") {
+    const average = averageReaction(measurement.rounds);
+    return average > 0 ? `${average} ms avg` : "";
+  }
+  return measurement.done ? `${measurement.accuracyPct}% accuracy` : "";
 }
 
 /* -------------------------------------------------------------------------- */
 /* Breathing Pace Trainer                                                     */
 /* -------------------------------------------------------------------------- */
 
-type BreathPhase = { label: "Inhale" | "Hold" | "Exhale" | "Breathe"; seconds: number };
-type BreathingTrial = Trial & { id: BreathingTrialId; phases: readonly BreathPhase[] };
-type BreathingMeasurement = { elapsed: number; cycles: number; breaths: number };
+type BreathingMeasurement = { elapsed: number; breaths: number };
+const BREATHING_WINDOW_MS = 30000;
 
 const BREATHING_TRIALS = [
   {
-    id: "natural",
-    short: "Natural",
-    title: "Natural breathing",
-    note: "Breathe normally for 30 seconds.",
-    instruction: "Breathe normally and notice your natural rhythm before trying the paced patterns.",
-    phases: [{ label: "Breathe", seconds: 30 }],
+    id: "rest",
+    short: "Rest",
+    title: "Breathing at rest",
+    note: "Sit or lie calmly before measuring.",
+    instruction:
+      "Rest the phone gently on your chest, stay still, then count each breath for 30 seconds.",
   },
   {
-    id: "balanced",
-    short: "4-4",
-    title: "Balanced 4-4 breathing",
-    note: "Inhale 4 seconds, exhale 4 seconds.",
-    instruction: "Follow the guide: inhale for 4 seconds, then exhale for 4 seconds.",
-    phases: [
-      { label: "Inhale", seconds: 4 },
-      { label: "Exhale", seconds: 4 },
-    ],
+    id: "exercise1",
+    short: "Jog",
+    title: "After exercise 1 — jog on the spot",
+    note: "Jog on the spot for one minute.",
+    instruction:
+      "Jog on the spot for one minute, then immediately rest the phone on your chest and count breaths for 30 seconds.",
   },
   {
-    id: "box",
-    short: "Box",
-    title: "Box breathing",
-    note: "Inhale, hold, exhale, hold.",
-    instruction: "Follow the guide through inhale, hold, exhale, and hold phases.",
-    phases: [
-      { label: "Inhale", seconds: 4 },
-      { label: "Hold", seconds: 4 },
-      { label: "Exhale", seconds: 4 },
-      { label: "Hold", seconds: 4 },
-    ],
-  },
-  {
-    id: "extended",
-    short: "4-6",
-    title: "Extended exhale",
-    note: "Inhale 4 seconds, exhale 6 seconds.",
-    instruction: "Follow the guide: inhale for 4 seconds, then use a longer 6-second exhale.",
-    phases: [
-      { label: "Inhale", seconds: 4 },
-      { label: "Exhale", seconds: 6 },
-    ],
+    id: "exercise2",
+    short: "Star jumps",
+    title: "After exercise 2 — 100 star jumps",
+    note: "Do 100 star jumps safely.",
+    instruction:
+      "Do 100 star jumps, then immediately rest the phone on your chest and count breaths for 30 seconds.",
   },
 ] as const;
 type BreathingTrialId = (typeof BREATHING_TRIALS)[number]["id"];
-
-function isBreathingMeasurementComplete(trial: BreathingTrial, measurement: BreathingMeasurement) {
-  if (trial.id === "natural") {
-    return measurement.elapsed >= 30000 && measurement.breaths > 0;
-  }
-
-  return measurement.cycles > 0 && measurement.breaths > 0;
-}
 
 export function BreathingPaceTrainerScreen() {
   return (
@@ -1175,49 +1310,48 @@ export function BreathingPaceTrainerScreen() {
       formatMeasurement={formatBreathingMeasurement}
       title="Breathing Pace Trainer"
       trials={BREATHING_TRIALS}
-      predictionPrompt="Predict which breathing pattern will make your breathing feel slowest and calmest."
-      predictionLead="I predict that"
-      predictionTail="will feel the calmest because..."
+      predictionPrompt="Predict your breathing rate — when will you breathe fastest?"
+      predictionLead="I predict breathing will be fastest"
+      predictionTail="because..."
       predictionOptions={BREATHING_TRIALS.map((t) => t.short)}
       canContinueFromRecorder={(measurements) =>
-        BREATHING_TRIALS.every((t) => isBreathingMeasurementComplete(t, measurements[t.id]))
+        BREATHING_TRIALS.every(
+          (t) => measurements[t.id].elapsed >= BREATHING_WINDOW_MS && measurements[t.id].breaths > 0,
+        )
       }
-      recorderIncompleteMessage="Record the full 30-second natural trial and at least one full cycle for every paced pattern before continuing."
+      recorderIncompleteMessage="Count breaths for the full 30-second window in every trial before continuing."
       createInitialMeasurements={() =>
-        Object.fromEntries(BREATHING_TRIALS.map((t) => [t.id, { elapsed: 0, cycles: 0, breaths: 0 }])) as Record<
+        Object.fromEntries(BREATHING_TRIALS.map((t) => [t.id, { elapsed: 0, breaths: 0 }])) as Record<
           BreathingTrialId,
           BreathingMeasurement
         >
       }
       renderInstructions={() => (
         <InstructionsContent
-          overview="Students compare normal breathing with paced breathing patterns. The trainer guides each phase so students can observe which rhythm feels most controlled."
+          overview="Students measure how their breathing rate changes with exercise. They count breaths at rest, then again after light exercise, using the phone on the chest to feel each breath."
           equipment={[
             "Mobile phone with STEMM Lab app",
-            "Chair or quiet standing space",
-            "Timer/trainer screen",
-            "Optional notebook for calmness rating",
+            "Flat surface or mat",
+            "Clear space for light exercise",
           ]}
           instructions={[
-            "Sit or stand safely in a quiet space.",
-            "Record natural breathing first.",
-            "Follow each paced breathing guide.",
-            "Stop if you feel dizzy or uncomfortable.",
-            "Compare which pattern felt easiest and calmest.",
-            "Complete the write-up and discussion.",
+            "Place the phone gently on your chest.",
+            "Count your breaths for 30 seconds at rest.",
+            "Jog on the spot for one minute, then count breaths again.",
+            "Do 100 star jumps, then count breaths a final time.",
+            "Work out breaths per minute and compare rest with after exercise.",
           ]}
-          referenceHeaders={["Pattern", "Effect"]}
+          referenceHeaders={["Measurement", "What it shows"]}
           referenceRows={[
-            ["Natural", "Baseline breathing rate and normal oxygen-carbon dioxide exchange"],
-            ["4-4", "Longer breaths can create a steadier rhythm"],
-            ["Box", "Inhale, hold, exhale, hold supports attention and control"],
-            ["4-6", "A longer exhale can support the relaxation response"],
+            ["Resting breathing", "Baseline oxygen demand when calm"],
+            ["After exercise", "Muscles need more oxygen, so breathing speeds up"],
+            ["Breaths per minute", "Breaths counted in 30 seconds × 2"],
+            ["Recovery", "Breathing slows back toward resting afterwards"],
           ]}
           diagram={[
-            "Phone shows the current breathing phase.",
-            "Circle expands during inhale.",
-            "Circle contracts during exhale.",
-            "Student records time, cycles, and reflection.",
+            "Lie down and rest the phone on your chest.",
+            "The chest rises and falls with each breath.",
+            "Count breaths at rest, then again after exercise.",
           ]}
           diagramArt={<BreathingDiagram />}
         />
@@ -1227,12 +1361,12 @@ export function BreathingPaceTrainerScreen() {
         <StandardWriteUp
           {...props}
           questions={[
-            { label: "Prediction: how calm or difficult did you expect this pattern to feel?" },
-            { label: "Measured breathing result", auto: true },
-            { label: "How did your breathing rate feel compared with normal breathing?" },
+            { label: "Predicted breaths per minute" },
+            { label: "Measured breathing rate", auto: true },
+            { label: "How did this compare with resting breathing?" },
             { label: "Were you right? What changed?" },
           ]}
-          reflectionPrompt="Which breathing pace felt most controlled? When could this technique help someone?"
+          reflectionPrompt="How did your breathing rate change after exercise? Why does the body breathe faster when you exercise?"
           formatMeasurement={formatBreathingMeasurement}
         />
       )}
@@ -1240,8 +1374,8 @@ export function BreathingPaceTrainerScreen() {
         <DiscussionContent
           heading="So why does this happen?"
           formulaTitle="Breathing rate:"
-          formula="Breathing rate = breaths per minute"
-          explanation="Slow paced breathing can reduce breathing rate and encourage a steadier rhythm. Longer exhales are linked with the body's relaxation response, which can lower perceived stress and help the body settle after activity."
+          formula="Breathing rate = breaths in 30 seconds × 2"
+          explanation="During exercise the muscles need more oxygen and produce more carbon dioxide, so the breathing rate increases to supply oxygen and clear waste gas faster. The phone resting on the chest detects each rise and fall, helping students see how breathing responds to activity and recovers afterwards."
         />
       )}
     />
@@ -1257,12 +1391,12 @@ function BreathingRecorder({
   setVideos,
 }: MeasurementProps<BreathingTrialId, BreathingMeasurement>) {
   const styles = useActivityStyles();
-  const breathingTrials = trials as readonly BreathingTrial[];
-  const [trial, setTrial] = useState<BreathingTrialId>(breathingTrials[0].id);
+  const [trial, setTrial] = useState<BreathingTrialId>(trials[0].id);
   const [running, setRunning] = useState(false);
-  const [elapsed, setElapsed] = useState(measurements[breathingTrials[0].id].elapsed);
+  const [elapsed, setElapsed] = useState(measurements[trials[0].id].elapsed);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startRef = useRef(0);
+  const maxMs = BREATHING_WINDOW_MS;
 
   useEffect(() => {
     return () => {
@@ -1282,54 +1416,45 @@ function BreathingRecorder({
   }
 
   function save(nextElapsed: number, breaths?: number) {
-    const current = breathingTrials.find((t) => t.id === trial) ?? breathingTrials[0];
     setMeasurements((prev) => ({
       ...prev,
-      [trial]: {
-        elapsed: nextElapsed,
-        cycles: countBreathingCycles(nextElapsed, current.phases),
-        breaths: breaths ?? prev[trial].breaths,
-      },
+      [trial]: { elapsed: nextElapsed, breaths: breaths ?? prev[trial].breaths },
     }));
   }
 
-  function toggleTrainer() {
+  function toggleTimer() {
     if (running) {
       if (intervalRef.current) clearInterval(intervalRef.current);
       intervalRef.current = null;
-      const finalElapsed = Date.now() - startRef.current;
+      const finalElapsed = Math.min(Date.now() - startRef.current, maxMs);
       setElapsed(finalElapsed);
       save(finalElapsed);
       setRunning(false);
       return;
     }
 
-    const base = currentTrial.id === "natural" && elapsed >= 30000 ? 0 : elapsed;
+    const base = elapsed >= maxMs ? 0 : elapsed;
     startRef.current = Date.now() - base;
     setElapsed(base);
     intervalRef.current = setInterval(() => {
-      const next = Date.now() - startRef.current;
-      const capped = currentTrial.id === "natural" ? Math.min(next, 30000) : next;
-      setElapsed(capped);
-      if (currentTrial.id === "natural" && capped >= 30000) {
+      const next = Math.min(Date.now() - startRef.current, maxMs);
+      setElapsed(next);
+      if (next >= maxMs) {
         if (intervalRef.current) clearInterval(intervalRef.current);
         intervalRef.current = null;
-        save(30000);
+        save(maxMs);
         setRunning(false);
       }
-    }, 250);
+    }, 50);
     setRunning(true);
   }
 
-  function clearTrainer() {
+  function clearCount() {
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = null;
     setRunning(false);
     setElapsed(0);
-    setMeasurements((prev) => ({
-      ...prev,
-      [trial]: { elapsed: 0, cycles: 0, breaths: 0 },
-    }));
+    setMeasurements((prev) => ({ ...prev, [trial]: { elapsed: 0, breaths: 0 } }));
   }
 
   function changeBreaths(delta: number) {
@@ -1340,16 +1465,15 @@ function BreathingRecorder({
     });
   }
 
-  const trialIndex = breathingTrials.findIndex((t) => t.id === trial);
-  const currentTrial = breathingTrials[trialIndex];
-  const nextTrial = breathingTrials[trialIndex + 1];
-  const phase = getBreathingPhase(elapsed, currentTrial.phases);
+  const trialIndex = trials.findIndex((t) => t.id === trial);
+  const currentTrial = trials[trialIndex];
+  const nextTrial = trials[trialIndex + 1];
   const current = measurements[trial];
-  const recorded = !running && isBreathingMeasurementComplete(currentTrial, current);
+  const recorded = !running && current.elapsed >= maxMs && current.breaths > 0;
 
   return (
     <>
-      <TrialTabs trials={breathingTrials} active={trial} onSelect={selectTrial} />
+      <TrialTabs trials={trials} active={trial} onSelect={selectTrial} />
 
       <View style={styles.instructionBox}>
         <Text style={styles.instructionTitle}>{currentTrial.title}</Text>
@@ -1362,13 +1486,8 @@ function BreathingRecorder({
       />
 
       <View style={[styles.card, styles.timerCard]}>
-        <View style={[styles.breathCircle, getBreathCircleStyle(phase.label, styles)]}>
-          <Text style={styles.breathPhase}>{phase.label}</Text>
-          <Text style={styles.breathCountdown}>{phase.remaining}s</Text>
-        </View>
-        <Text style={styles.resultLine}>
-          Total: {formatTime(elapsed)} / Cycles: {countBreathingCycles(elapsed, currentTrial.phases)}
-        </Text>
+        <Text style={styles.timer}>{formatTime(elapsed)}</Text>
+        <Text style={styles.resultLine}>Count each breath for 30 seconds.</Text>
 
         <View style={styles.counterRow}>
           <Pressable style={styles.counterBtn} onPress={() => changeBreaths(-1)}>
@@ -1384,21 +1503,18 @@ function BreathingRecorder({
         </View>
 
         <Text style={styles.resultLine}>
-          {current.breaths > 0 && elapsed > 0
+          {current.breaths > 0 && elapsed >= maxMs
             ? `Breathing rate: ${breathsPerMinute(current.breaths, elapsed)} breaths/min`
             : "Tap + each time you complete a breath."}
         </Text>
 
-        <Pressable
-          style={[styles.outlineBtn, running && styles.primaryBtn]}
-          onPress={toggleTrainer}
-        >
+        <Pressable style={[styles.outlineBtn, running && styles.primaryBtn]} onPress={toggleTimer}>
           <Text style={[styles.outlineBtnText, running && styles.primaryBtnText]}>
-            {running ? "Stop Trainer" : "Start Trainer"}
+            {running ? "Stop Count" : elapsed >= maxMs ? "Restart 30s Count" : "Start 30s Count"}
           </Text>
         </Pressable>
-        <Pressable style={styles.outlineBtn} onPress={clearTrainer}>
-          <Text style={styles.outlineBtnText}>Clear Trainer</Text>
+        <Pressable style={styles.outlineBtn} onPress={clearCount}>
+          <Text style={styles.outlineBtnText}>Clear Count</Text>
         </Pressable>
       </View>
 
@@ -1406,35 +1522,15 @@ function BreathingRecorder({
         (nextTrial ? (
           <Text style={styles.switchHint}>
             Saved {currentTrial.short}. Switch to {nextTrial.short} above to record the next
-            pattern.
+            trial.
           </Text>
         ) : (
           <Text style={styles.switchHint}>
-            All breathing patterns recorded. Continue to the Write-Up step when you are ready.
+            All breathing results recorded. Continue to the Write-Up step when you are ready.
           </Text>
         ))}
     </>
   );
-}
-
-function getBreathingPhase(elapsedMs: number, phases: readonly BreathPhase[]) {
-  const elapsedSeconds = Math.floor(elapsedMs / 1000);
-  const cycleSeconds = phases.reduce((sum, p) => sum + p.seconds, 0);
-  let position = cycleSeconds === 0 ? 0 : elapsedSeconds % cycleSeconds;
-
-  for (const phase of phases) {
-    if (position < phase.seconds) {
-      return { label: phase.label, remaining: phase.seconds - position };
-    }
-    position -= phase.seconds;
-  }
-  return { label: phases[0].label, remaining: phases[0].seconds };
-}
-
-function countBreathingCycles(elapsedMs: number, phases: readonly BreathPhase[]) {
-  const cycleSeconds = phases.reduce((sum, p) => sum + p.seconds, 0);
-  if (!cycleSeconds) return 0;
-  return Math.floor(elapsedMs / 1000 / cycleSeconds);
 }
 
 function breathsPerMinute(breaths: number, elapsedMs: number) {
@@ -1442,19 +1538,11 @@ function breathsPerMinute(breaths: number, elapsedMs: number) {
   return Math.round((breaths * 60000) / elapsedMs);
 }
 
-function getBreathCircleStyle(
-  label: BreathPhase["label"],
-  styles: ReturnType<typeof useActivityStyles>,
-) {
-  if (label === "Inhale") return styles.breathCircleInhale;
-  if (label === "Exhale") return styles.breathCircleExhale;
-  return styles.breathCircleHold;
-}
-
 function formatBreathingMeasurement(measurement: BreathingMeasurement) {
-  if (measurement.elapsed <= 0 || measurement.breaths <= 0) return "";
-  const rate = measurement.breaths > 0 ? ` / ${breathsPerMinute(measurement.breaths, measurement.elapsed)} breaths/min` : "";
-  return `${formatTime(measurement.elapsed)} / ${measurement.cycles} cycles / ${measurement.breaths} breaths${rate}`;
+  if (measurement.elapsed < BREATHING_WINDOW_MS || measurement.breaths <= 0) return "";
+  return `${breathsPerMinute(measurement.breaths, measurement.elapsed)} breaths/min (${
+    measurement.breaths
+  } in ${formatTime(measurement.elapsed)})`;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1692,6 +1780,14 @@ const makeStyles = (c: Palette, ACCENT: Accent) =>
   reactionReady: { backgroundColor: c.primary, borderColor: c.primary },
   reactionCellText: { color: c.inputText, fontSize: 16, fontWeight: "900" },
   reactionCellTextReady: { color: c.white },
+  traceBoard: {
+    width: 240,
+    height: 240,
+    alignSelf: "center",
+    borderRadius: 16,
+    backgroundColor: ACCENT.softHeader,
+    overflow: "hidden",
+  },
   resultLine: { color: c.inputText, fontSize: 15, fontWeight: "600", textAlign: "center" },
   counterRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 14 },
   counterBtn: {
@@ -1708,19 +1804,6 @@ const makeStyles = (c: Palette, ACCENT: Accent) =>
   counterReadout: { minWidth: 92, alignItems: "center" },
   counterNumber: { color: c.inputText, fontSize: 32, fontWeight: "900" },
   counterLabel: { color: c.muted, fontSize: 13, fontWeight: "700", marginTop: 2 },
-  breathCircle: {
-    borderRadius: 999,
-    borderWidth: 2,
-    borderColor: c.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: ACCENT.softHeader,
-  },
-  breathCircleInhale: { width: 154, height: 154 },
-  breathCircleHold: { width: 128, height: 128 },
-  breathCircleExhale: { width: 96, height: 96 },
-  breathPhase: { color: c.primary, fontSize: 22, fontWeight: "900" },
-  breathCountdown: { color: c.inputText, fontSize: 18, fontWeight: "800", marginTop: 4 },
   footer: {
     flexDirection: "row",
     gap: 12,

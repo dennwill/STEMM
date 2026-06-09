@@ -10,7 +10,7 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
-import { useCallback, useRef, useState } from "react";
+import { ComponentProps, useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -283,45 +283,54 @@ export default function TeamScreen() {
           </View>
         )}
 
-        <View style={[styles.menu, styles.menuSpaced]}>
-          <MenuRow label="Settings" onPress={() => router.push("/settings" as any)} />
-          <MenuRow
-            label="Terms and Conditions"
-            onPress={() => router.push("/terms" as any)}
-          />
-          <MenuRow label="Privacy Policy" onPress={() => router.push("/privacy" as any)} />
-          {team && teamId && (
-            <MenuRow label="Leave Team" danger onPress={confirmLeaveTeam} />
-          )}
-          <MenuRow label="Log Out" danger last onPress={logout} />
+        <View style={styles.cardGrid}>
+          <View style={styles.cardRow}>
+            <MenuCard
+              label="Settings"
+              icon="cog-outline"
+              onPress={() => router.push("/settings" as any)}
+            />
+            {team && teamId && (
+              <MenuCard label="Leave Team" icon="exit-run" danger onPress={confirmLeaveTeam} />
+            )}
+            <MenuCard label="Log Out" icon="logout" danger onPress={logout} />
+          </View>
+
+          <View style={styles.linkRow}>
+            <Pressable hitSlop={8} onPress={() => router.push("/privacy" as any)}>
+              <Text style={styles.link}>Privacy Policy</Text>
+            </Pressable>
+            <Text style={styles.linkSeparator}>·</Text>
+            <Pressable hitSlop={8} onPress={() => router.push("/terms" as any)}>
+              <Text style={styles.link}>Terms &amp; Conditions</Text>
+            </Pressable>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function MenuRow({
+function MenuCard({
   label,
+  icon,
   onPress,
   danger,
-  last,
 }: {
   label: string;
+  icon: ComponentProps<typeof MaterialCommunityIcons>["name"];
   onPress: () => void;
   danger?: boolean;
-  last?: boolean;
 }) {
+  const { palette: c } = useTheme();
   const styles = useThemedStyles(makeStyles);
   return (
     <Pressable
-      style={({ pressed }) => [
-        styles.menuRow,
-        last && styles.menuRowLast,
-        pressed && styles.menuRowPressed,
-      ]}
+      style={({ pressed }) => [styles.actionCard, pressed && styles.actionCardPressed]}
       onPress={onPress}
     >
-      <Text style={[styles.menuLabel, danger && styles.menuLabelDanger]}>{label}</Text>
+      <MaterialCommunityIcons name={icon} size={28} color={danger ? c.error : c.primary} />
+      <Text style={[styles.actionLabel, danger && styles.actionLabelDanger]}>{label}</Text>
     </Pressable>
   );
 }
@@ -397,16 +406,43 @@ const makeStyles = (c: Palette) =>
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: c.input,
   },
-  menuSpaced: { marginTop: 28 },
-  menuRow: {
+  cardGrid: { marginTop: 28, gap: 12 },
+  cardRow: { flexDirection: "row", gap: 12 },
+  actionCard: {
+    flex: 1,
+    backgroundColor: c.white,
+    borderWidth: 1,
+    borderColor: c.input,
+    borderRadius: 16,
     paddingVertical: 18,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: c.input,
+    paddingHorizontal: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    minHeight: 96,
   },
-  menuRowLast: { borderBottomWidth: 0 },
-  menuRowPressed: { opacity: 0.5 },
-  menuLabel: { color: c.inputText, fontSize: 16, fontWeight: "600" },
-  menuLabelDanger: { color: c.error, fontWeight: "700" },
+  actionCardPressed: { opacity: 0.5 },
+  actionLabel: {
+    color: c.inputText,
+    fontSize: 14,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  actionLabelDanger: { color: c.error },
+  linkRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 4,
+  },
+  link: {
+    color: c.primary,
+    fontSize: 14,
+    fontWeight: "600",
+    textDecorationLine: "underline",
+  },
+  linkSeparator: { color: c.muted, fontSize: 14 },
   memberRow: {
     flexDirection: "row",
     alignItems: "center",

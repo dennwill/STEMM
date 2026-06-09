@@ -100,6 +100,29 @@ assets/              Icons and images
 
    From there you can open the app in a development build, an Android emulator, an iOS simulator, or Expo Go.
 
+### Building
+
+Builds are produced in the cloud with [EAS Build](https://docs.expo.dev/build/introduction/). The profiles are defined in `eas.json`:
+
+- **development** — Internal dev client (Android APK / iOS simulator) on the `development` channel.
+- **preview** — Internal-distribution build (Android APK) on the `preview` channel, for sharing test builds via an install link or QR code.
+- **production** — Store-ready build with auto-incremented version on the `production` channel.
+
+Authenticate once with `eas login`, then run:
+
+```bash
+# Preview build (installable APK, shareable link)
+eas build --profile preview --platform android
+
+# Development client
+eas build --profile development --platform android
+
+# Production
+eas build --profile production --platform all
+```
+
+Use `--platform ios` or `--platform all` to target iOS. If EAS CLI isn't installed globally, prefix commands with `npx eas-cli`. Version numbers are managed remotely (`appVersionSource: "remote"`), so EAS handles versioning automatically.
+
 ## Scripts
 
 - `npm start` — Start the Expo dev server

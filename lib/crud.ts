@@ -29,6 +29,9 @@ export type ChallengeSession = {
   activity_id: number;
   prediction_text: string | null;
   discussion_reflection: string | null;
+  rating: number | null;
+  gps_lat: number | null;
+  gps_lng: number | null;
   completed_at: string;
 };
 
@@ -174,14 +177,21 @@ export async function deleteActivity(db: SQLiteDatabase, id: number): Promise<vo
 
 export async function createChallengeSession(
   db: SQLiteDatabase,
-  data: Pick<ChallengeSession, "team_id" | "activity_id" | "prediction_text" | "discussion_reflection">,
+  data: Pick<
+    ChallengeSession,
+    "team_id" | "activity_id" | "prediction_text" | "discussion_reflection"
+  > &
+    Partial<Pick<ChallengeSession, "rating" | "gps_lat" | "gps_lng">>,
 ): Promise<number> {
   const result = await db.runAsync(
-    "INSERT INTO challenge_sessions (team_id, activity_id, prediction_text, discussion_reflection) VALUES (?, ?, ?, ?)",
+    "INSERT INTO challenge_sessions (team_id, activity_id, prediction_text, discussion_reflection, rating, gps_lat, gps_lng) VALUES (?, ?, ?, ?, ?, ?, ?)",
     data.team_id,
     data.activity_id,
     data.prediction_text ?? null,
     data.discussion_reflection ?? null,
+    data.rating ?? null,
+    data.gps_lat ?? null,
+    data.gps_lng ?? null,
   );
   return result.lastInsertRowId;
 }

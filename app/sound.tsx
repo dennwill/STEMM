@@ -24,6 +24,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { VideoEvidence } from "@/components/VideoEvidence";
 import { SoundDiagram } from "@/components/ActivityDiagrams";
+import { RatingCard } from "@/components/RatingCard";
+import { captureSessionLocation } from "@/lib/location";
 import { createChallengeSession, createDataPoint } from "@/lib/crud";
 import { LOCAL_ACTIVITY_IDS, LOCAL_TEAM_ID } from "@/lib/db";
 import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
@@ -77,6 +79,7 @@ export default function SoundScreen() {
   // steps doesn't unmount and discard what the user has entered.
   const [prediction, setPrediction] = useState<PredictionValue>({ choice: "", reason: "" });
   const [reflection, setReflection] = useState("");
+  const [rating, setRating] = useState(0);
   const [levels, setLevels] = useState<Record<TrialId, number>>(
     Object.fromEntries(TRIALS.map((t) => [t.id, 0])) as Record<TrialId, number>,
   );
@@ -110,11 +113,15 @@ export default function SoundScreen() {
       // Persist the activity session and data points to SQLite
       let localSaveMessage = "Activity data was saved locally.";
       try {
+        const loc = await captureSessionLocation();
         const sessionId = await createChallengeSession(db, {
           team_id: LOCAL_TEAM_ID,
           activity_id: LOCAL_ACTIVITY_IDS.sound,
           prediction_text: prediction.choice ? `${prediction.choice}: ${prediction.reason}` : null,
           discussion_reflection: reflection || null,
+          rating: rating || null,
+          gps_lat: loc?.lat ?? null,
+          gps_lng: loc?.lng ?? null,
         });
 
         const measuredLevels = TRIALS.map((trial) => levels[trial.id]);
@@ -202,6 +209,7 @@ export default function SoundScreen() {
             />
           )}
           {current === "Discussion" && <Discussion />}
+          {current === "Discussion" && <RatingCard value={rating} onChange={setRating} />}
         </ScrollView>
 
         <View style={styles.footer}>
@@ -230,6 +238,15 @@ function classifyZone(level: number): Zone {
   if (level >= 30) return "Moderate";
   return "Quiet";
 }
+
+// Background + border tint for each zone card, per theme (parallels DB_TINTS).
+// The card text uses theme colors (inputText / muted), so the dark backgrounds
+// keep those readable instead of light text on a light pastel.
+const ZONE_TINTS: Record<Zone, { light: { bg: string; border: string }; dark: { bg: string; border: string } }> = {
+  Quiet: { light: { bg: "#DDEFE2", border: "#79A885" }, dark: { bg: "#15331F", border: "#356B45" } },
+  Moderate: { light: { bg: "#FFF0C2", border: "#C59728" }, dark: { bg: "#3E3512", border: "#7A671F" } },
+  Loud: { light: { bg: "#FAD6D1", border: "#C15B50" }, dark: { bg: "#3C1B17", border: "#7A352C" } },
+};
 
 /* -------------------------------------------------------------------------- */
 /* Instructions                                                               */
@@ -549,6 +566,7 @@ function ZoneMapSummary({
   activeTrial: TrialId;
 }) {
   const styles = useWizardStyles(makeStyles);
+  const { isDark } = useTheme();
   return (
     <View style={styles.zonePanel}>
       <Text style={styles.zonePanelTitle}>Classroom loud / quiet zone map</Text>
@@ -557,14 +575,13 @@ function ZoneMapSummary({
           const level = levels[trial.id];
           const zone = classifyZone(level);
           const location = locations[trial.id].trim();
+          const tint = ZONE_TINTS[zone][isDark ? "dark" : "light"];
           return (
             <View
               key={trial.id}
               style={[
                 styles.zoneCard,
-                level > 0 && zone === "Quiet" && styles.zoneQuiet,
-                level > 0 && zone === "Moderate" && styles.zoneModerate,
-                level > 0 && zone === "Loud" && styles.zoneLoud,
+                level > 0 && { backgroundColor: tint.bg, borderColor: tint.border },
                 activeTrial === trial.id && styles.zoneCardActive,
               ]}
             >
@@ -955,9 +972,6 @@ const makeStyles = (c: Palette, ACCENT: WizardAccent) =>
       backgroundColor: c.bg,
     },
     zoneCardActive: { borderColor: c.primary, borderWidth: 2 },
-    zoneQuiet: { backgroundColor: "#DDEFE2", borderColor: "#79A885" },
-    zoneModerate: { backgroundColor: "#FFF0C2", borderColor: "#C59728" },
-    zoneLoud: { backgroundColor: "#FAD6D1", borderColor: "#C15B50" },
     zoneTitle: { color: c.inputText, fontSize: 14, fontWeight: "800", marginBottom: 4 },
     zoneLocation: { color: c.inputText, fontSize: 14, lineHeight: 20 },
     zoneReading: { color: c.muted, fontSize: 13, fontWeight: "700", marginTop: 6 },

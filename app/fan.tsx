@@ -19,6 +19,8 @@ import { LOCAL_ACTIVITY_IDS, LOCAL_TEAM_ID } from "@/lib/db";
 import { awardActivityCompletionPoints, formatAwardPointsMessage } from "@/lib/points";
 import { VideoEvidence } from "@/components/VideoEvidence";
 import { FanDiagram } from "@/components/ActivityDiagrams";
+import { RatingCard } from "@/components/RatingCard";
+import { captureSessionLocation } from "@/lib/location";
 import { Palette, useTheme, useWizardStyles, WizardAccent } from "@/lib/theme";
 
 const TABS = ["Instructions", "Prediction", "Recorder", "Write-Up", "Discussion"] as const;
@@ -64,6 +66,7 @@ export default function FanScreen() {
   // steps doesn't unmount and discard what the user has entered.
   const [prediction, setPrediction] = useState<PredictionValue>({ choice: "", reason: "" });
   const [reflection, setReflection] = useState("");
+  const [rating, setRating] = useState(0);
   const [videos, setVideos] = useState<Record<TrialId, string>>(
     Object.fromEntries(TRIALS.map((t) => [t.id, ""])) as Record<TrialId, string>,
   );
@@ -83,6 +86,7 @@ export default function FanScreen() {
       // Persist the activity session and data points to SQLite
       let localSaveMessage = "Activity data was saved locally.";
       try {
+        const loc = await captureSessionLocation();
         const sessionId = await createChallengeSession(db, {
           team_id: LOCAL_TEAM_ID,
           activity_id: LOCAL_ACTIVITY_IDS.fan,
@@ -90,6 +94,9 @@ export default function FanScreen() {
             ? `${prediction.choice}: ${prediction.reason}`
             : null,
           discussion_reflection: reflection || null,
+          rating: rating || null,
+          gps_lat: loc?.lat ?? null,
+          gps_lng: loc?.lng ?? null,
         });
 
         // Save each fan design as a data point, keeping its uploaded video.
@@ -166,6 +173,7 @@ export default function FanScreen() {
             />
           )}
           {current === "Discussion" && <Discussion />}
+          {current === "Discussion" && <RatingCard value={rating} onChange={setRating} />}
         </ScrollView>
 
         <View style={styles.footer}>
