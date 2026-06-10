@@ -1,0 +1,256 @@
+PASS __tests__/e2e/app-config.test.ts
+  app.json configuration
+    √ has the correct app name (20 ms)
+    √ has expo-router plugin configured (1 ms)
+    √ has expo-sqlite plugin configured (1 ms)
+    √ has expo-audio plugin configured (1 ms)
+    √ has Android adaptive icon configured (1 ms)
+    √ has the deep-linking scheme set to "stemm" (2 ms)
+    √ has typed routes experiment enabled (1 ms)
+    √ is configured for portrait orientation (1 ms)
+    √ has iOS tablet support enabled
+
+PASS __tests__/integration/errors.test.ts
+  friendlyError
+    √ returns a friendly message for auth/user-not-found (27 ms)
+    √ returns a friendly message for auth/invalid-credential (1 ms)
+    √ returns a friendly message for network errors (1 ms)
+    √ returns a friendly message for auth/weak-password (1 ms)
+    √ returns a friendly message for permission-denied (1 ms)
+    √ returns the default fallback for unknown error codes (1 ms)
+    √ returns a custom fallback when provided
+    √ returns the fallback for errors without a code property (1 ms)
+    √ handles null gracefully (2 ms)
+    √ handles undefined gracefully (1 ms)
+    √ handles non-object values gracefully (1 ms)
+
+PASS __tests__/integration/theme.test.ts
+  Colors
+    √ has both light and dark keys (29 ms)
+    √ light scheme has all required keys (2 ms)
+    √ dark scheme has all required keys (2 ms)
+    √ light scheme values are valid hex colors (4 ms)
+    √ dark scheme values are valid hex colors (6 ms)
+    √ light and dark themes have different text colors (1 ms)
+    √ light and dark themes have different background colors
+    √ light and dark themes have different tint colors (1 ms)
+  Fonts
+    √ is defined (2 ms)
+    √ has sans, serif, rounded, and mono keys (1 ms)
+    √ all font values are strings (1 ms)
+
+PASS __tests__/integration/firebase.test.ts
+  firebase module
+    √ initialises the Firebase app with config from environment variables (28 ms)
+    √ exports auth and firestore instances (1 ms)
+    √ exports trackEvent and getAnalyticsInstance as functions (1 ms)
+  getAnalyticsInstance
+    √ returns an Analytics instance when isSupported resolves to true (5 ms)
+    √ returns null when isSupported throws an error (3 ms)
+  trackEvent
+    √ calls logEvent when analytics is available (3 ms)
+    √ accepts events without params (1 ms)
+    √ handles string and number parameter values (1 ms)
+
+  console.warn
+    Notification permission not granted
+
+    [0m [90m 39 |[39m
+     [90m 40 |[39m   [36mif[39m (finalStatus [33m!==[39m [32m"granted"[39m) {
+    [31m[1m>[22m[39m[90m 41 |[39m     console[33m.[39mwarn([32m"Notification permission not granted"[39m)[33m;[39m
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 42 |[39m     [36mreturn[39m [36mnull[39m[33m;[39m
+     [90m 43 |[39m   }
+     [90m 44 |[39m[0m
+
+      at warn (lib/notifications.ts:41:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  console.warn
+    Notification permission not granted
+
+    [0m [90m 39 |[39m
+     [90m 40 |[39m   [36mif[39m (finalStatus [33m!==[39m [32m"granted"[39m) {
+    [31m[1m>[22m[39m[90m 41 |[39m     console[33m.[39mwarn([32m"Notification permission not granted"[39m)[33m;[39m
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 42 |[39m     [36mreturn[39m [36mnull[39m[33m;[39m
+     [90m 43 |[39m   }
+     [90m 44 |[39m[0m
+
+      at warn (lib/notifications.ts:41:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+PASS __tests__/unit/discriminant.test.ts
+  generateDiscriminant
+    √ returns a string of default length 6 (24 ms)
+    √ returns a string of custom length when provided (2 ms)
+    √ only contains valid characters from the alphabet (96 ms)
+    √ does not contain ambiguous characters I, O, 0, or 1 (16 ms)
+    √ produces different results across multiple calls (2 ms)
+    √ returns an empty string when length is 0
+    √ returns a single valid character when length is 1
+
+  console.log
+    Background sync: fetched 5 teams from Firestore
+
+      at Object.log (lib/background-tasks.ts:18:13)
+
+PASS __tests__/unit/notifications.test.ts
+  Notifications Module
+    scheduleActivityReminder
+      √ schedules a notification with the correct parameters (31 ms)
+    cancelAllNotifications
+      √ cancels all scheduled notifications (3 ms)
+    registerForPushNotifications
+      √ returns null if the app is running on a simulator (99 ms)
+      √ requests and returns push token when permissions are granted (2 ms)
+      √ requests permissions if not already granted and returns token if accepted (3 ms)
+      √ returns null if permissions are denied (5 ms)
+
+  console.error
+    Background sync failed: Error: Network error
+        at Object.<anonymous> (C:\Users\denni\Documents\CodingProjects\STEMM\__tests__\unit\background-tasks.test.ts:144:35)
+        at Generator.next (<anonymous>)
+        at asyncGeneratorStep (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\@babel\runtime\helpers\asyncToGenerator.js:3:17)
+        at _next (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\@babel\runtime\helpers\asyncToGenerator.js:17:9)
+        at C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\@babel\runtime\helpers\asyncToGenerator.js:22:7
+        at new Promise (<anonymous>)
+        at Object.<anonymous> (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\@babel\runtime\helpers\asyncToGenerator.js:14:12)
+        at Promise.then.completed (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\utils.js:298:28)
+        at new Promise (<anonymous>)
+        at callAsyncCircusFn (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\utils.js:231:10)
+        at _callCircusTest (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\run.js:316:40)
+        at processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at _runTest (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\run.js:252:3)
+        at _runTestsForDescribeBlock (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\run.js:126:9)
+        at _runTestsForDescribeBlock (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\run.js:121:9)
+        at run (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\run.js:71:3)
+        at runAndTransformResultsToJestFormat (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapterInit.js:122:21)
+        at jestAdapter (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapter.js:79:19)
+        at runTestInternal (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-runner\build\runTest.js:367:16)
+        at runTest (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-runner\build\runTest.js:444:34)
+        at Object.worker (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-runner\build\testWorker.js:106:12)
+
+    [0m [90m 19 |[39m     [36mreturn[39m [33mBackgroundTask[39m[33m.[39m[33mBackgroundTaskResult[39m[33m.[39m[33mSuccess[39m[33m;[39m
+     [90m 20 |[39m   } [36mcatch[39m (error) {
+    [31m[1m>[22m[39m[90m 21 |[39m     console[33m.[39merror([32m"Background sync failed:"[39m[33m,[39m error)[33m;[39m
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 22 |[39m     [36mreturn[39m [33mBackgroundTask[39m[33m.[39m[33mBackgroundTaskResult[39m[33m.[39m[33mFailed[39m[33m;[39m
+     [90m 23 |[39m   }
+     [90m 24 |[39m })[33m;[39m[0m
+
+      at Object.error (lib/background-tasks.ts:21:13)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+  console.error
+    Background sync failed: Error: permission-denied
+        at Object.<anonymous> (C:\Users\denni\Documents\CodingProjects\STEMM\__tests__\unit\background-tasks.test.ts:152:35)
+        at Generator.next (<anonymous>)
+        at asyncGeneratorStep (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\@babel\runtime\helpers\asyncToGenerator.js:3:17)
+        at _next (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\@babel\runtime\helpers\asyncToGenerator.js:17:9)
+        at C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\@babel\runtime\helpers\asyncToGenerator.js:22:7
+        at new Promise (<anonymous>)
+        at Object.<anonymous> (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\@babel\runtime\helpers\asyncToGenerator.js:14:12)
+        at Promise.then.completed (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\utils.js:298:28)
+        at new Promise (<anonymous>)
+        at callAsyncCircusFn (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\utils.js:231:10)
+        at _callCircusTest (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\run.js:316:40)
+        at processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at _runTest (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\run.js:252:3)
+        at _runTestsForDescribeBlock (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\run.js:126:9)
+        at _runTestsForDescribeBlock (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\run.js:121:9)
+        at run (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\run.js:71:3)
+        at runAndTransformResultsToJestFormat (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapterInit.js:122:21)
+        at jestAdapter (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapter.js:79:19)
+        at runTestInternal (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-runner\build\runTest.js:367:16)
+        at runTest (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-runner\build\runTest.js:444:34)
+        at Object.worker (C:\Users\denni\Documents\CodingProjects\STEMM\node_modules\jest-runner\build\testWorker.js:106:12)
+
+    [0m [90m 19 |[39m     [36mreturn[39m [33mBackgroundTask[39m[33m.[39m[33mBackgroundTaskResult[39m[33m.[39m[33mSuccess[39m[33m;[39m
+     [90m 20 |[39m   } [36mcatch[39m (error) {
+    [31m[1m>[22m[39m[90m 21 |[39m     console[33m.[39merror([32m"Background sync failed:"[39m[33m,[39m error)[33m;[39m
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 22 |[39m     [36mreturn[39m [33mBackgroundTask[39m[33m.[39m[33mBackgroundTaskResult[39m[33m.[39m[33mFailed[39m[33m;[39m
+     [90m 23 |[39m   }
+     [90m 24 |[39m })[33m;[39m[0m
+
+      at Object.error (lib/background-tasks.ts:21:13)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+PASS __tests__/unit/background-tasks.test.ts
+  background-tasks module
+    √ defines a task named 'leaderboard-sync-task' (20 ms)
+    √ registerBackgroundSync calls registerTaskAsync with correct options (2 ms)
+    √ unregisterBackgroundSync calls unregisterTaskAsync (1 ms)
+    √ checkBackgroundSyncStatus returns true when task is registered (2 ms)
+    √ checkBackgroundSyncStatus returns false when task is not registered (1 ms)
+  background task execution
+    √ returns Success (1) when Firestore fetch succeeds (81 ms)
+    √ returns Failed (2) when Firestore fetch throws a network error (32 ms)
+    √ returns Failed (2) when Firestore fetch throws a permission error (4 ms)
+
+PASS __tests__/unit/points.test.ts
+  points scoring
+    √ uses 100 points as the activity completion score (14 ms)
+    √ awards points once by writing an award log and incrementing team score (10 ms)
+    √ does not double-award an activity already completed by the team (2 ms)
+    √ returns no-team when the signed-in user has not joined a team (1 ms)
+    √ returns no-user when no one is signed in (1 ms)
+    √ formats point award messages for the UI (1 ms)
+
+PASS __tests__/unit/crud.test.ts
+  crud module exports
+    √ exports all expected functions (21 ms)
+    √ createTeam is a function (1 ms)
+    √ getTeam is a function
+    √ getTeamByDiscriminantId is a function (1 ms)
+    √ getAllTeams is a function
+    √ updateTeam is a function
+    √ deleteTeam is a function
+    √ createTeamMember is a function (1 ms)
+    √ getTeamMember is a function
+    √ getMembersByTeam is a function
+    √ updateTeamMember is a function
+    √ deleteTeamMember is a function
+    √ createActivity is a function
+    √ getActivity is a function
+    √ getAllActivities is a function (1 ms)
+    √ getActivitiesByCategory is a function
+    √ updateActivity is a function (1 ms)
+    √ deleteActivity is a function
+    √ createChallengeSession is a function
+    √ getChallengeSession is a function (1 ms)
+    √ getSessionsByTeam is a function
+    √ getSessionsByActivity is a function
+    √ updateChallengeSession is a function (1 ms)
+    √ deleteChallengeSession is a function
+    √ createDataPoint is a function
+    √ getDataPoint is a function
+    √ getDataPointsBySession is a function (1 ms)
+    √ updateDataPoint is a function
+    √ deleteDataPoint is a function
+    √ createLeaderboardScore is a function
+    √ getLeaderboardScore is a function (1 ms)
+    √ getScoreByTeam is a function
+    √ getLeaderboard is a function
+    √ upsertLeaderboardScore is a function
+    √ updateLeaderboardScore is a function
+    √ deleteLeaderboardScore is a function (1 ms)
+    √ exports Team type (compile-time check)
+    √ exports TeamMember type (compile-time check) (1 ms)
+    √ exports Activity type (compile-time check)
+    √ exports ChallengeSession type (compile-time check)
+    √ exports ChallengeDataPoint type (compile-time check) (1 ms)
+    √ exports LeaderboardScore type (compile-time check)
+
+Test Suites: 9 passed, 9 total
+Tests:       108 passed, 108 total
+Snapshots:   0 total
+Time:        7.16 s
+Ran all test suites.
