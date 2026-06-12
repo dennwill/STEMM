@@ -9,10 +9,8 @@ describe('generateDiscriminant', () => {
     expect(result).toHaveLength(6);
   });
 
-  it('returns a string of custom length when provided', () => {
-    expect(generateDiscriminant(10)).toHaveLength(10);
-    expect(generateDiscriminant(3)).toHaveLength(3);
-    expect(generateDiscriminant(20)).toHaveLength(20);
+  it.each([3, 6, 10, 20])('returns a string of dynamic custom length %i', (length) => {
+    expect(generateDiscriminant(length)).toHaveLength(length);
   });
 
   it('only contains valid characters from the alphabet', () => {

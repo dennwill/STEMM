@@ -30,6 +30,17 @@ function snap(data: Record<string, unknown> | undefined, exists = true): MockSna
   };
 }
 
+function makePointCase(activityId = "reaction") {
+  const suffix = `${activityId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+  return {
+    userId: `user-${suffix}`,
+    teamId: `TEAM-${suffix.toUpperCase()}`,
+    activityId,
+    title: `${activityId} title ${suffix}`,
+    awardKey: `TEAM-${suffix.toUpperCase()}_${activityId}`,
+  };
+}
+
 describe("points scoring", () => {
   const mockRunTransaction = runTransaction as jest.Mock;
   const mockDoc = doc as jest.Mock;
@@ -47,10 +58,12 @@ describe("points scoring", () => {
   });
 
   it("awards points once by writing an award log and incrementing team score", async () => {
+    const data = makePointCase("reaction");
+    (auth as any).currentUser = { uid: data.userId };
     const transaction = {
       get: jest.fn(async (ref: { path: string }) => {
-        if (ref.path === "users/user-1") return snap({ team_id: "TEAM1" });
-        if (ref.path === "point_awards/TEAM1_reaction") return snap(undefined, false);
+        if (ref.path === `users/${data.userId}`) return snap({ team_id: data.teamId });
+        if (ref.path === `point_awards/${data.awardKey}`) return snap(undefined, false);
         return snap(undefined, false);
       }),
       set: jest.fn(),
@@ -58,25 +71,25 @@ describe("points scoring", () => {
     };
     mockRunTransaction.mockImplementation(async (_firestore, callback) => callback(transaction));
 
-    const result = await awardActivityCompletionPoints("reaction", "Reaction Board Challenge");
+    const result = await awardActivityCompletionPoints(data.activityId, data.title);
 
-    expect(result).toEqual({ awarded: true, points: 100, teamId: "TEAM1" });
-    expect(mockDoc).toHaveBeenCalledWith(expect.anything(), "users", "user-1");
-    expect(mockDoc).toHaveBeenCalledWith(expect.anything(), "point_awards", "TEAM1_reaction");
-    expect(mockDoc).toHaveBeenCalledWith(expect.anything(), "teams", "TEAM1");
+    expect(result).toEqual({ awarded: true, points: 100, teamId: data.teamId });
+    expect(mockDoc).toHaveBeenCalledWith(expect.anything(), "users", data.userId);
+    expect(mockDoc).toHaveBeenCalledWith(expect.anything(), "point_awards", data.awardKey);
+    expect(mockDoc).toHaveBeenCalledWith(expect.anything(), "teams", data.teamId);
     expect(transaction.set).toHaveBeenCalledWith(
-      { path: "point_awards/TEAM1_reaction" },
+      { path: `point_awards/${data.awardKey}` },
       expect.objectContaining({
-        team_id: "TEAM1",
-        user_uid: "user-1",
-        activity_id: "reaction",
-        activity_title: "Reaction Board Challenge",
+        team_id: data.teamId,
+        user_uid: data.userId,
+        activity_id: data.activityId,
+        activity_title: data.title,
         points: 100,
         validation_version: 1,
       }),
     );
     expect(transaction.update).toHaveBeenCalledWith(
-      { path: "teams/TEAM1" },
+      { path: `teams/${data.teamId}` },
       {
         score: { __increment: 100 },
         last_score_update: "server-timestamp",
@@ -87,10 +100,12 @@ describe("points scoring", () => {
   });
 
   it("does not double-award an activity already completed by the team", async () => {
+    const data = makePointCase("sound");
+    (auth as any).currentUser = { uid: data.userId };
     const transaction = {
       get: jest.fn(async (ref: { path: string }) => {
-        if (ref.path === "users/user-1") return snap({ team_id: "TEAM1" });
-        if (ref.path === "point_awards/TEAM1_reaction") return snap({ points: 100 }, true);
+        if (ref.path === `users/${data.userId}`) return snap({ team_id: data.teamId });
+        if (ref.path === `point_awards/${data.awardKey}`) return snap({ points: 100 }, true);
         return snap(undefined, false);
       }),
       set: jest.fn(),
@@ -98,17 +113,24 @@ describe("points scoring", () => {
     };
     mockRunTransaction.mockImplementation(async (_firestore, callback) => callback(transaction));
 
-    const result = await awardActivityCompletionPoints("reaction", "Reaction Board Challenge");
+    const result = await awardActivityCompletionPoints(data.activityId, data.title);
 
     expect(result).toEqual({
       awarded: false,
       points: 100,
-      teamId: "TEAM1",
+      teamId: data.teamId,
       reason: "already-awarded",
     });
     expect(transaction.set).not.toHaveBeenCalled();
     expect(transaction.update).not.toHaveBeenCalled();
   });
+
+  it.each(["parachute", "sound", "fan", "earthquake", "performance", "reaction", "breathing"])(
+    "uses the standard dynamic completion score for %s",
+    (activityId) => {
+      expect(getActivityPoints(activityId)).toBe(100);
+    },
+  );
 
   it("returns no-team when the signed-in user has not joined a team", async () => {
     const transaction = {

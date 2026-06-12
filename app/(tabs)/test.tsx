@@ -34,6 +34,46 @@ import {
 
 type LogEntry = { label: string; ok: boolean; detail: string };
 
+function makeRunData() {
+  const suffix = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+  const label = (base: string) => `${base} ${suffix}`;
+
+  return {
+    suffix,
+    team: {
+      discriminant_id: `crud-${suffix}`,
+      team_name: label("Team"),
+      grade_level: `${(suffix.length % 12) + 1}th`,
+      updated_name: label("Team Updated"),
+    },
+    member: {
+      first_name: label("Member"),
+      updated_name: label("Member Updated"),
+    },
+    activity: {
+      category: label("Science"),
+      challenge_name: label("Challenge"),
+      description: label("Dynamic CRUD challenge description"),
+      updated_name: label("Challenge v2"),
+    },
+    session: {
+      prediction_text: label("Prediction"),
+      discussion_reflection: label("Reflection"),
+    },
+    dataPoint: {
+      action_or_design: label("Design"),
+      prediction_value: `${suffix.length * 2} units`,
+      outcome_value: `${suffix.length * 3} units`,
+      updated_outcome: `${suffix.length * 4} units`,
+    },
+    leaderboard: {
+      initial_score: 100 + suffix.length,
+      updated_score: 200 + suffix.length,
+      upserted_score: 300 + suffix.length,
+    },
+  };
+}
+
 export default function TestScreen() {
   const db = useSQLiteContext();
   const [log, setLog] = useState<LogEntry[]>([]);
@@ -47,56 +87,72 @@ export default function TestScreen() {
     setLog([]);
     setRunning(true);
     try {
+      const data = makeRunData();
+      push("dynamic input seed", true, data.suffix);
+
       // ------ Teams ---------------------------------
       const teamId = await createTeam(db, {
-        discriminant_id: `test-${Date.now()}`,
-        team_name: "Alpha",
-        grade_level: "5th",
+        discriminant_id: data.team.discriminant_id,
+        team_name: data.team.team_name,
+        grade_level: data.team.grade_level,
       });
       push("createTeam", teamId > 0, `id=${teamId}`);
 
       const teams = await getAllTeams(db);
       const found = teams.find((t) => t.id === teamId);
-      push("getAllTeams", !!found, `count=${teams.length}, name=${found?.team_name}`);
+      push(
+        "getAllTeams",
+        found?.team_name === data.team.team_name && found?.grade_level === data.team.grade_level,
+        `count=${teams.length}, name=${found?.team_name}, grade=${found?.grade_level}`,
+      );
 
-      await updateTeam(db, teamId, { team_name: "Alpha Updated" });
+      await updateTeam(db, teamId, { team_name: data.team.updated_name });
       const teamsAfter = await getAllTeams(db);
       const updated = teamsAfter.find((t) => t.id === teamId);
-      push("updateTeam", updated?.team_name === "Alpha Updated", `name=${updated?.team_name}`);
+      push("updateTeam", updated?.team_name === data.team.updated_name, `name=${updated?.team_name}`);
 
       // ------- Team Members ---------------------------------
-      const memberId = await createTeamMember(db, { team_id: teamId, first_name: "Jordan" });
+      const memberId = await createTeamMember(db, { team_id: teamId, first_name: data.member.first_name });
       push("createTeamMember", memberId > 0, `id=${memberId}`);
 
       const members = await getMembersByTeam(db, teamId);
-      push("getMembersByTeam", members.length > 0, `count=${members.length}, name=${members[0]?.first_name}`);
+      push(
+        "getMembersByTeam",
+        members.some((m) => m.id === memberId && m.first_name === data.member.first_name),
+        `count=${members.length}, name=${members.find((m) => m.id === memberId)?.first_name}`,
+      );
 
-      await updateTeamMember(db, memberId, { first_name: "Jordan Updated" });
+      await updateTeamMember(db, memberId, { first_name: data.member.updated_name });
       const membersAfter = await getMembersByTeam(db, teamId);
-      push("updateTeamMember", membersAfter[0]?.first_name === "Jordan Updated", `name=${membersAfter[0]?.first_name}`);
+      const updatedMember = membersAfter.find((m) => m.id === memberId);
+      push("updateTeamMember", updatedMember?.first_name === data.member.updated_name, `name=${updatedMember?.first_name}`);
 
       await deleteTeamMember(db, memberId);
       const membersDeleted = await getMembersByTeam(db, teamId);
-      push("deleteTeamMember", membersDeleted.length === 0, `count=${membersDeleted.length}`);
+      push("deleteTeamMember", !membersDeleted.some((m) => m.id === memberId), `remaining=${membersDeleted.length}`);
 
       // ------- Activities ------------------------------------
       const activityId = await createActivity(db, {
-        category: "Science",
-        challenge_name: "Bridge Build",
-        description: "Build the strongest bridge.",
+        category: data.activity.category,
+        challenge_name: data.activity.challenge_name,
+        description: data.activity.description,
       });
       push("createActivity", activityId > 0, `id=${activityId}`);
 
       const activities = await getAllActivities(db);
       const foundActivity = activities.find((a) => a.id === activityId);
-      push("getAllActivities", !!foundActivity, `count=${activities.length}`);
+      push(
+        "getAllActivities",
+        foundActivity?.challenge_name === data.activity.challenge_name,
+        `count=${activities.length}, name=${foundActivity?.challenge_name}`,
+      );
 
-      await updateActivity(db, activityId, { challenge_name: "Bridge Build v2" });
+      await updateActivity(db, activityId, { challenge_name: data.activity.updated_name });
       const activitiesAfter = await getAllActivities(db);
       const updatedActivity = activitiesAfter.find((a) => a.id === activityId);
       push(
         "updateActivity",
-        updatedActivity?.challenge_name === "Bridge Build v2",
+        updatedActivity?.challenge_name === data.activity.updated_name,
         `name=${updatedActivity?.challenge_name}`,
       );
 
@@ -104,61 +160,75 @@ export default function TestScreen() {
       const sessionId = await createChallengeSession(db, {
         team_id: teamId,
         activity_id: activityId,
-        prediction_text: "We predict success.",
+        prediction_text: data.session.prediction_text,
         discussion_reflection: null,
       });
       push("createChallengeSession", sessionId > 0, `id=${sessionId}`);
 
       const sessions = await getSessionsByTeam(db, teamId);
-      push("getSessionsByTeam", sessions.length > 0, `count=${sessions.length}`);
+      push(
+        "getSessionsByTeam",
+        sessions.some((s) => s.id === sessionId && s.prediction_text === data.session.prediction_text),
+        `count=${sessions.length}`,
+      );
 
-      await updateChallengeSession(db, sessionId, { discussion_reflection: "It worked!" });
+      await updateChallengeSession(db, sessionId, { discussion_reflection: data.session.discussion_reflection });
       const sessionsAfter = await getSessionsByTeam(db, teamId);
+      const updatedSession = sessionsAfter.find((s) => s.id === sessionId);
       push(
         "updateChallengeSession",
-        sessionsAfter[0]?.discussion_reflection === "It worked!",
-        `reflection=${sessionsAfter[0]?.discussion_reflection}`,
+        updatedSession?.discussion_reflection === data.session.discussion_reflection,
+        `reflection=${updatedSession?.discussion_reflection}`,
       );
 
       // ----- Data Points -----------------------------------
       const dpId = await createDataPoint(db, {
         session_id: sessionId,
         attempt_number: 1,
-        action_or_design: "Design A",
-        prediction_value: "10kg",
-        outcome_value: "12kg",
+        action_or_design: data.dataPoint.action_or_design,
+        prediction_value: data.dataPoint.prediction_value,
+        outcome_value: data.dataPoint.outcome_value,
         prediction_correct: true,
         media_file_path: null,
       });
       push("createDataPoint", dpId > 0, `id=${dpId}`);
 
       const points = await getDataPointsBySession(db, sessionId);
-      push("getDataPointsBySession", points.length > 0, `count=${points.length}`);
+      push(
+        "getDataPointsBySession",
+        points.some((p) => p.id === dpId && p.outcome_value === data.dataPoint.outcome_value),
+        `count=${points.length}`,
+      );
 
-      await updateDataPoint(db, dpId, { outcome_value: "14kg" });
+      await updateDataPoint(db, dpId, { outcome_value: data.dataPoint.updated_outcome });
       const pointsAfter = await getDataPointsBySession(db, sessionId);
-      push("updateDataPoint", pointsAfter[0]?.outcome_value === "14kg", `outcome=${pointsAfter[0]?.outcome_value}`);
+      const updatedPoint = pointsAfter.find((p) => p.id === dpId);
+      push("updateDataPoint", updatedPoint?.outcome_value === data.dataPoint.updated_outcome, `outcome=${updatedPoint?.outcome_value}`);
 
       await deleteDataPoint(db, dpId);
       const pointsDeleted = await getDataPointsBySession(db, sessionId);
-      push("deleteDataPoint", pointsDeleted.length === 0, `count=${pointsDeleted.length}`);
+      push("deleteDataPoint", !pointsDeleted.some((p) => p.id === dpId), `remaining=${pointsDeleted.length}`);
 
       // ------ Leaderboard -------------------------------------
-      const scoreId = await createLeaderboardScore(db, { team_id: teamId, score: 100 });
+      const scoreId = await createLeaderboardScore(db, { team_id: teamId, score: data.leaderboard.initial_score });
       push("createLeaderboardScore", scoreId > 0, `id=${scoreId}`);
 
       const board = await getLeaderboard(db);
-      push("getLeaderboard", board.length > 0, `count=${board.length}, top=${board[0]?.score}`);
+      push(
+        "getLeaderboard",
+        board.some((s) => s.id === scoreId && s.score === data.leaderboard.initial_score),
+        `count=${board.length}, inserted=${data.leaderboard.initial_score}`,
+      );
 
-      await updateLeaderboardScore(db, scoreId, 200);
+      await updateLeaderboardScore(db, scoreId, data.leaderboard.updated_score);
       const boardAfter = await getLeaderboard(db);
       const updatedScore = boardAfter.find((s) => s.id === scoreId);
-      push("updateLeaderboardScore", updatedScore?.score === 200, `score=${updatedScore?.score}`);
+      push("updateLeaderboardScore", updatedScore?.score === data.leaderboard.updated_score, `score=${updatedScore?.score}`);
 
-      await upsertLeaderboardScore(db, teamId, 300);
+      await upsertLeaderboardScore(db, teamId, data.leaderboard.upserted_score);
       const boardUpsert = await getLeaderboard(db);
       const upserted = boardUpsert.find((s) => s.id === scoreId);
-      push("upsertLeaderboardScore", upserted?.score === 300, `score=${upserted?.score}`);
+      push("upsertLeaderboardScore", upserted?.score === data.leaderboard.upserted_score, `score=${upserted?.score}`);
 
       await deleteLeaderboardScore(db, scoreId);
       const boardDeleted = await getLeaderboard(db);

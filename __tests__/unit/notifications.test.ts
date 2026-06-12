@@ -41,17 +41,21 @@ describe("Notifications Module", () => {
   });
 
   describe("scheduleActivityReminder", () => {
-    it("schedules a notification with the correct parameters", async () => {
-      const activityName = "Breathing Pace Trainer";
-      const delayMinutes = 5;
+    it.each([
+      ["Breathing Pace Trainer", 5],
+      ["Reaction Board Challenge", 12],
+      ["Sound Pollution Hunter", 30],
+    ])("schedules a dynamic reminder for %s after %i minutes", async (activityName, delayMinutes) => {
+      const notificationId = `notification-${activityName.toLowerCase().replace(/\s+/g, "-")}`;
+      (Notifications.scheduleNotificationAsync as jest.Mock).mockResolvedValue(notificationId);
 
       const id = await scheduleActivityReminder(activityName, delayMinutes);
 
-      expect(id).toBe("mock-notification-id");
+      expect(id).toBe(notificationId);
       expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledWith({
         content: {
           title: "STEMM Reminder",
-          body: "Don't forget to complete your Breathing Pace Trainer activity!",
+          body: `Don't forget to complete your ${activityName} activity!`,
         },
         trigger: {
           type: "timeInterval",
