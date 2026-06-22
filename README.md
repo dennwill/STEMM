@@ -5,9 +5,9 @@ STEMM is a mobile app for running hands-on science and engineering challenges wi
 The app is built with Expo (React Native) and uses Firebase for accounts, team data, and the leaderboard, plus a local SQLite database for recording each activity session on the device.
 
 <p align="center">
-  <img src="public/team_screen.jpeg" width="30%" alt="Team screen" />
-  <img src="public/game_screen.jpeg" width="30%" alt="Activity screen" />
   <img src="public/leaderboard_screen.jpeg" width="30%" alt="Leaderboard screen" />
+  <img src="public/game_screen.jpeg" width="30%" alt="Activity screen" />
+  <img src="public/team_screen.jpeg" width="30%" alt="Team screen" />
 </p>
 
 <p align="center"><em>Build a team, work through guided activities, and climb the leaderboard.</em></p>
